@@ -1,103 +1,173 @@
-import discord, asyncio, os, random
+import discord, asyncio, os, random, datetime
 from discord.ext import commands
 from ytdl import YTDLSource
 
 client = commands.Bot(command_prefix = '.')
 
-class AmarBot():
+class AmarBot:
 
 	def __init__(self, filesize_restriction=None):
-		self.queue = []
 		self.voice_client = None
-		self.player = None
-		self.last_context = None # any time function runs with context passed, update this to that context
-		self.song_finished = False # asynchronously checking this var to detect when to play next song 
-		self.filesize_restriction = filesize_restriction # 1e+7 = 10mb, 1e+8 = 100mb
-		self.loop = asyncio.get_event_loop()
-		self.bg_task = self.loop.create_task(self.check_queue())
 
-	# Music Commands
-	async def play(self, args, context=None):
+	@staticmethod
+	async def acknowledge(context):
+		await context.message.add_reaction("⏳")
 
-		if not context is None:
-			success = await self.join(context)
-			if not success:
-				return
+	@staticmethod
+	async def finish(context, delete_after=None):
+		await context.message.remove_reaction("⏳", client.user)
+		await context.message.add_reaction("☑")
+		if isinstance(delete_after, (int, float)):
+			await context.message.edit(delete_after=delete_after)
 
-		query = " ".join(args)
+	async def channel_count(self, context):
+		"""Returns total number of text messages in a channel"""
+		await self.acknowledge(context)
+		messages = len(await context.message.channel.history(limit=None).flatten())
+		await context.message.channel.send(
+			f"There are a total of {messages} *text* messages in the channel."
+		)
+		await self.finish(context)
 
-		if self.voice_client.is_playing() or self.voice_client.is_paused():
-			await self.add_to_queue(query, context)
-			return
+	async def count(self, context):
+		await self.acknowledge(context)
+		counter = 0
+		author = context.message.author.mention
+		async for message in context.message.channel.history(limit=None):
+			if message.author == context.message.author:
+				counter += 1
+		await context.message.channel.send(
+			f"{author} has {counter} total *text* messages in this channel."
+		)
+		await self.finish(context)
 
-		# Calling this already downloads file.
-		# The bit below it returning if filesize is too large is redundant
-		# Will add this functionality later probably
-		self.player = await YTDLSource.from_url(query, stream=False)
-
-		if not self.filesize_restriction is None and self.player.data["filesize"] < self.filesize_restriction:
-			await context.message.channel.send(f'"{self.player.data["title"]}" file size is too large!')
-			return
-
-		if not context is None:
-			await context.message.channel.send(
-				f'Now playing "{self.player.data["title"]}"\n{self.player.data["webpage_url"]}'
+	@staticmethod
+	def filter_message(content="", filters=None):
+		if content != "" and not isinstance(filters, (list, set, tuple)):
+			raise Exception(
+				f"""filter_message called with content, filters = {type(content)} {type(filters)}
+				and expected str and list/set/tuple of str."""
 			)
-		elif not self.last_context is None:
-			await self.last_context.message.channel.send(
-				f'Now playing "{self.player.data["title"]}"\n{self.player.data["webpage_url"]}'
-			)
 
-		self.song_finished = False
-		self.voice_client.play(self.player, after=lambda e: print('Player Error: %s' % e) if e else self.song_after(self.player.data["id"]))
+		str_strip = lambda string: string.replace("*", "").replace("!", "")
 
-	def song_after(self, song_id):
-		self.song_finished = True
-		for file_name in os.listdir():
-			if song_id in file_name:
-				os.remove(file_name)
+		should_pass = 0
+		shouldnt_pass = 0
 
-	async def queue_next(self): 
-		if self.queue:
-			song = self.queue.pop(0)
-			await self.stop()
-			await self.play((song))
+		for clean in filters:
+			if "*" in clean and not "\*" in clean:
+				if "!" in clean and not "\!" in clean:
+					if str_strip(clean).lower() in content.lower():
+						shouldnt_pass += 1
+				else:
+					if str_strip(clean).lower() in content.lower():
+						should_pass += 1
+			else:
+				if "!" in clean and not "\!" in clean:
+					if str_strip(clean).lower() in content.lower().split(" "):
+						shouldnt_pass += 1
+				else:
+					if str_strip(clean).lower() in content.lower().split(" "):
+						should_pass += 1
 
-	async def add_to_queue(self, query, context=None):
-		self.queue.append(query)
-		if not context is None:
-			self.last_context = context
-			await context.message.channel.send(f'"{query}" has been added to queue!')
+		if shouldnt_pass > 0:
+			return False
+		elif should_pass > 0:
+			return True
+
+		return False
+
+	async def history(self, context, args):
+		await self.acknowledge(context)
+		counter = 0
+		concatented_str = ""
+		at_user = f"{context.message.author.mention}:\n"
+		async for message in context.message.channel.history(limit=None):
+			if message.id != context.message.id and message.author == context.message.author and not message.pinned:
+				if self.filter_message(message.content, args):
+					counter += 1
+					# doing this because of Discords 2000 char limit in messages
+					if len(at_user + concatented_str + message.content) + 6 > 2000:
+						await context.message.channel.send(at_user + concatented_str, delete_after=60.0)
+						concatented_str = ""
+					else:
+						concatented_str += "> - " + message.content + "\n"
+
+		if len(concatented_str) > 0:
+			await context.message.channel.send(at_user, delete_after=60.0)
+			await context.message.channel.send(concatented_str, delete_after=60.0)
+
+		await context.message.channel.send(f"Found {counter} instances from {context.message.author.mention}...", delete_after=60.0)
+		await self.finish(context, delete_after=60.0)
+
+	async def clear(self, args, context):
+		"""
+			Searches through entire history of a text channel and 
+			removes any messages that match the given keywords
+		"""
+		await self.acknowledge(context)
+		counter = 0
+		concatented_str = ""
+		at_user = f"{context.message.author.mention}:\n"
+		for message in await context.message.channel.history(limit=None).flatten():
+			if message.id != context.message.id and message.author == context.message.author and not message.pinned:
+				if self.filter_message(message.content, args):
+					counter += 1
+					# doing this because of Discords 2000 char limit in messages
+					if len(at_user + concatented_str + message.content) + 6 > 2000:
+						await context.message.channel.send(at_user + concatented_str, delete_after=60.0)
+						concatented_str = ""
+					else:
+						concatented_str += "> - " + message.content + "\n"
+					await message.delete()
+						
+		if len(concatented_str) > 0:
+			await context.message.channel.send(at_user + concatented_str, delete_after=60.0)
+			concatented_str = ""
+
+		await context.message.channel.send(f"Removing {counter} instances from {context.message.author.mention}...", delete_after=60.0)
+		await self.finish(context, delete_after=60.0)
+
+	async def clear_bot_messages(self, context):
+		"""
+			Searches through entire text channel history of the bot and 
+			removes all messages that are not pinned.
+		"""
+		await self.acknowledge(context)
+		counter = 0
+		at_user = f"{context.message.author.mention}:\n"
+		for message in await context.message.channel.history(limit=None).flatten():
+			if message.id != context.message.id and message.author == client.user and not message.pinned:
+				counter += 1
+				await message.delete()
+
+		await context.message.channel.send(f"Removing {counter} instances from {client.user.mention}...", delete_after=60.0)
+		await self.finish(context, delete_after=60.0)
 
 	async def stop(self, context=None):
-		if not self.voice_client is None:
+		if self.voice_client is not None:
 			self.voice_client.stop()
-		if not context is None:
-			self.last_context = context
-			await context.message.channel.send("Music stopped!")
+		await context.message.add_reaction("🛑")
 
-	async def pause(self, context=None):
-		if not self.voice_client is None:
-			self.voice_client.pause()
-		if not context is None:
-			self.last_context = context
-			await context.message.channel.send("Music paused!")
-
-	async def resume(self, context=None):
-		if not self.voice_client is None:
-			self.voice_client.resume()
-		if not context is None:
-			self.last_context = context
-			await context.message.channel.send("Music resumed!")
-
-	async def skip(self, context):
-		await self.stop()
-		await context.message.channel.send(f'"{self.player.data["title"]}" was skipped!')
-		await self.queue_next()
+	async def quote(self, context):
+		await self.acknowledge(context)
+		random_date = datetime.datetime.now() - datetime.timedelta(days=random.randint(0, 365*2))
+		for mention in context.message.mentions:
+			messages = await context.message.channel.history(limit=1000, before=random_date).flatten()
+			mention_quotes = list(filter(lambda user: user.author == mention, messages))
+			if len(mention_quotes) > 0:
+				rando_msg = random.choice(mention_quotes)
+				await context.message.channel.send(
+					f"""\"{rando_msg.content}\" 
+					- {mention.nick or mention.display_name} {rando_msg.created_at.year}/{rando_msg.created_at.month}/{rando_msg.created_at.day}"""
+				)
+			else:
+				await context.message.channel.send(
+					f"no quotes found before {random_date.year}/{random_date.month}/{random_date.day} 😭"
+				)
+			await self.finish(context)
 
 	async def join(self, context):
-
-		self.last_context = context
 
 		if context.message.author.voice is None:
 			await context.message.channel.send(
@@ -108,7 +178,7 @@ class AmarBot():
 			voice_channel = context.message.author.voice.channel
 			try:
 				self.voice_client = await voice_channel.connect()
-			except discord.ClientException: # if bot is in another voice channel
+			except discord.ClientException:
 				await self.voice_client.move_to(voice_channel)
 
 		return True
@@ -116,16 +186,15 @@ class AmarBot():
 	async def leave(self):
 		self.voice_client = await self.voice_client.edit(voice_channel=None)
 
-	async def check_queue(self):
-		while True:
-			if self.song_finished:
-				await self.queue_next()
-			await asyncio.sleep(1) # task runs every 1 second
-
-	# Fun Commands (must pass context, else will return)
+	# meme commands ⬇⬇⬇
 	async def russian_roulette(self, context=None):
-		# Randomly selects a user to be kicked from the voice channel
-		if not context is None:
+		"""Randomly selects a user and disconnects them from the channel."""
+		for role in context.message.author.roles:
+			if role.permissions.manage_permissions is not True:
+				await context.message.add_reaction("🚫")
+				return
+
+		if context is not None:
 			success = await self.join(context)
 			if not success:
 				return
@@ -133,7 +202,6 @@ class AmarBot():
 			return
 
 		voice_channel = context.message.author.voice.channel
-		# message_channel = context.message.channel
 
 		if len(voice_channel.members) > 0:
 			chosen_one = random.choice(voice_channel.members)
@@ -151,8 +219,13 @@ class AmarBot():
 			await self.leave()
 
 	async def driveby(self, context=None):
-		# Bot plays machine gun sound while everyone gets kicked from voice channel
-		if not context is None:
+		"""Plays machine gun sound while kicking people from the voice channel."""
+		for role in context.message.author.roles:
+			if role.permissions.manage_permissions is not True:
+				await context.message.add_reaction("🚫")
+				return
+
+		if context is not None:
 			success = await self.join(context)
 			if not success:
 				return
@@ -160,14 +233,11 @@ class AmarBot():
 			return
 
 		voice_channel = context.message.author.voice.channel
-		# message_channel = context.message.channel
 
 		if len(voice_channel.members) > 0:
 
-			# prepare gunshot sound
-			player = await YTDLSource.from_url("K0op6i9ydnM", stream=True)
+			player = await YTDLSource.from_url("K0op6i9ydnM", stream=False)
 
-			# connect to voice channel and start playing sound
 			await self.join(context)
 			self.voice_client.play(player)
 
@@ -176,7 +246,6 @@ class AmarBot():
 
 			edited_members = voice_channel.members
 
-			# remove all other bots from this list and exlude them from the driveby
 			for user in edited_members:
 				if user.bot:
 					edited_members.remove(user)
@@ -196,9 +265,13 @@ class AmarBot():
 			await self.leave()
 
 	async def grenade(self, context=None):
-		# Bot plays grenade sound while everyone gets 
-		# scattered across all available voice channels in the curent server
-		if not context is None:
+		"""Plays grenade sound while everyone is scattered."""
+		for role in context.message.author.roles:
+			if role.permissions.manage_permissions is not True:
+				await context.message.add_reaction("🚫")
+				return
+
+		if context is not None:
 			success = await self.join(context)
 			if not success:
 				return
@@ -206,14 +279,11 @@ class AmarBot():
 			return
 
 		voice_channel = context.message.author.voice.channel
-		# message_channel = context.message.channel
 
 		if len(voice_channel.members) > 0:
 
-			# prepare gunshot sound
 			player = await YTDLSource.from_url("grenade sound effect", stream=True)
 
-			# connect to voice channel and start playing sound
 			await self.join(context)
 			self.voice_client.play(player)
 
@@ -222,10 +292,11 @@ class AmarBot():
 			# sleep so user can hear gunshot
 			await asyncio.sleep(player.data["duration"])
 
+			# To avoid kicking them into a channel they dont have access to
 			for member in voice_channel.members:
 				if member.bot:
 					continue
-				available_channels = [] # channels available to the member in the current iteration
+				available_channels = []
 				for channel in all_voice_channels:
 					if channel.permissions_for(member).connect:
 						available_channels.append(channel)
@@ -244,25 +315,39 @@ async def on_ready():
 	print("--------------------")
 
 @client.command(pass_context=True)
-async def play(context, *args):
-	await bot.play(args, context=context)
+async def max_count(context):
+	await bot.max_count(context)
 
+@client.command(pass_context=True)
+async def count(context):
+	await bot.count(context)
+
+@client.command(pass_context=True)
+async def clear(context, *args):
+	await bot.clear(args, context)
+
+@client.command(pass_context=True)
+async def clear_bot_messages(context):
+	await bot.clear_bot_messages(context)
+
+@client.command(pass_context=True)
+async def history(context, *args):
+	await bot.history(context, args)
+
+@client.command(pass_context=True)
+async def vote(context):
+	await bot.vote(context)
+
+@client.command(pass_context=True)
+async def quote(context):
+	await bot.quote(context)
+
+# stop command just to stop other commands in there tracks
 @client.command(pass_context=True)
 async def stop(context):
 	await bot.stop(context)
 
-@client.command(pass_context=True)
-async def pause(context):
-	await bot.pause(context)
-
-@client.command(pass_context=True)
-async def resume(context):
-	await bot.resume(context)
-
-@client.command(pass_context=True)
-async def skip(context):
-	await bot.skip(context)
-
+# meme commands ⬇⬇⬇
 @client.command(pass_context=True)
 async def roulette(context):
 	await bot.russian_roulette(context)
@@ -275,6 +360,4 @@ async def driveby(context):
 async def grenade(context):
 	await bot.grenade(context)
 
-
-
-client.run(os.environ.get("AmarBot_Token"))
+client.run("NjExNDY3NjE2NTY5MjYyMDgx.Xec5RQ.jyoKEesLLLWUFKqW6bcXl1Cvghs")
