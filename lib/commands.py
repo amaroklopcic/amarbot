@@ -1,5 +1,6 @@
 from discord.ext import commands
 
+
 async def command_count(context: commands.Context):
     """Returns total number of text messages from author in a channel."""
     count = 0
@@ -10,6 +11,7 @@ async def command_count(context: commands.Context):
     await context.message.channel.send(
         f"{author} has {count} total text messages in this channel."
     )
+
 
 async def command_channel_count(self, context: commands.Context):
     count = 0
