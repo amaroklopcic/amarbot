@@ -1,11 +1,15 @@
 import discord, asyncio, os, random, datetime
 from discord.ext import commands
 from ytdl import YTDLSource
+from dotenv import load_dotenv
 
-client = commands.Bot(command_prefix = '.')
+load_dotenv()
+
+intents = discord.Intents.default()
+intents.message_content = True
+client = commands.Bot(command_prefix = '.', intents=intents)
 
 class AmarBot:
-
 	def __init__(self, filesize_restriction=None):
 		self.voice_client = None
 
@@ -360,4 +364,4 @@ async def driveby(context):
 async def grenade(context):
 	await bot.grenade(context)
 
-client.run("NjExNDY3NjE2NTY5MjYyMDgx.Xec5RQ.jyoKEesLLLWUFKqW6bcXl1Cvghs")
+client.run(os.environ.get("AMARBOT_TOKEN"))
