@@ -15,17 +15,21 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix=".", intents=intents)
 
+
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user.name} (ID: {bot.user.id})")
     print("--------------------")
 
+
 async def acknowledge(context: commands.Context):
     await context.message.add_reaction("⏳")
+
 
 async def finish(context: commands.Context):
     await context.message.remove_reaction("⏳", bot.user)
     await context.message.add_reaction("☑")
+
 
 @bot.command()
 async def count(context: commands.Context):
