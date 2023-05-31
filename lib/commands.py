@@ -13,11 +13,10 @@ async def command_count(context: commands.Context):
     )
 
 
-async def command_channel_count(self, context: commands.Context):
+async def command_channel_count(context: commands.Context):
     count = 0
-    author = context.message.author.mention
     async for message in context.message.channel.history(limit=None):
         count += 1
     await context.message.channel.send(
-        f"{author} has {count} total text messages in this channel."
+        f"There are a total of {count} text messages in the channel."
     )

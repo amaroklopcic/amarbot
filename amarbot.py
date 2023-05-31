@@ -8,7 +8,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from lib.ytdl import YTDLSource
-from lib.commands import command_count
+from lib.commands import command_count, command_channel_count
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -36,6 +36,14 @@ async def count(context: commands.Context):
     """Returns total number of text messages from author in a channel."""
     await acknowledge(context)
     await command_count(context)
+    await finish(context)
+
+
+@bot.command()
+async def channel_count(context: commands.Context):
+    """Returns total number of text messages in a channel."""
+    await acknowledge(context)
+    await command_channel_count(context)
     await finish(context)
 
 
