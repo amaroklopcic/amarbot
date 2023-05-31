@@ -1,7 +1,13 @@
-import discord, asyncio, os, random, datetime
+import asyncio
+import datetime
+import os
+import random
+
+import discord
 from discord.ext import commands
-from ytdl import YTDLSource
 from dotenv import load_dotenv
+
+from lib.ytdl import YTDLSource
 
 load_dotenv()
 
