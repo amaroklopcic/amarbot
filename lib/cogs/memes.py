@@ -143,3 +143,21 @@ class MemeCog(CommonCog):
 
         await ctx.send("NOW PLAYING: TUNUS FAVORITE SONG")
         await self.finish(ctx)
+
+    # -vvv- commands suggested by Sandi -vvv-
+    @commands.command()
+    async def smd(self, ctx: commands.Context):
+        """Plays grenade sound while everyone is scattered across various channels."""
+        await self.acknowledge(ctx)
+
+        await self.join_authors_vc(ctx)
+
+        # join voice_channel and play minecraft music video
+        url = "https://www.youtube.com/watch?v=VmBMxMivJXQ&t=4s"
+        grapefruit_video = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+        ctx.voice_client.play(
+            grapefruit_video, after=lambda e: print(f"Player error: {e}") if e else None
+        )
+
+        await ctx.send("NOW PLAYING: SANDIS FAVORITE TECHNIQUE")
+        await self.finish(ctx)
