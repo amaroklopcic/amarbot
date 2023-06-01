@@ -1,7 +1,7 @@
+import asyncio
+
 import discord
 from discord.ext import commands
-
-from lib.commands_logic import command_channel_count, command_count
 
 
 class CommonCog(commands.Cog):
@@ -9,16 +9,22 @@ class CommonCog(commands.Cog):
         super().__init__()
         self.bot = bot
 
+    async def sleep(self, duration: float):
+        await asyncio.sleep(duration)
+
     async def acknowledge(self, context: commands.Context):
+        """Adds a timer emoji to users issued command."""
         await context.message.add_reaction("⏳")
 
     async def finish(self, context: commands.Context):
+        """Removes timer emoji and adds checkmark emoji to users issued command."""
         await context.message.remove_reaction("⏳", self.bot.user)
         await context.message.add_reaction("☑")
 
     async def join_channel(
         self, ctx: commands.Context, *, channel: discord.VoiceChannel
     ):
+        """Joins a voice channel."""
         if ctx.voice_client is not None:
             return await ctx.voice_client.move_to(channel)
 
@@ -31,5 +37,5 @@ class CommonCog(commands.Cog):
 
     @commands.command()
     async def stop(self, ctx: commands.Context):
-        """Stops and disconnects the bot from voice channel."""
+        """Disconnects the bot from voice channel."""
         await ctx.voice_client.disconnect()
