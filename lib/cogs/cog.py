@@ -15,27 +15,32 @@ class CommonCog(commands.Cog):
     async def acknowledge(self, context: commands.Context):
         """Adds a timer emoji to users issued command."""
         await context.message.add_reaction("⏳")
+        # TODO: check if user has sufficient privileges
+        # for role in ctx.message.author.roles:
+        #     if role.permissions.manage_permissions is not True:
+        #         await ctx.message.add_reaction("🚫")
+        #         return
 
     async def finish(self, context: commands.Context):
         """Removes timer emoji and adds checkmark emoji to users issued command."""
         await context.message.remove_reaction("⏳", self.bot.user)
         await context.message.add_reaction("☑")
 
-    async def join_channel(
-        self, ctx: commands.Context, *, channel: discord.VoiceChannel
-    ):
+    async def join_authors_vc(self, ctx: commands.Context):
+        """Joins a users voice channel (`ctx.author.voice.channel`)."""
+        if ctx.voice_client is None:
+            if ctx.author.voice:
+                await ctx.author.voice.channel.connect()
+            else:
+                await ctx.send("You are not connected to a voice channel.")
+                raise commands.CommandError("Author not connected to a voice channel.")
+        elif ctx.voice_client.is_playing():
+            ctx.voice_client.stop()
+
+    async def join_vc(self, ctx: commands.Context, *, channel: discord.VoiceChannel):
         """Joins a voice channel."""
-        if ctx.voice_client is not None:
-            return await ctx.voice_client.move_to(channel)
+        return await channel.connect()
 
-        await channel.connect()
-
-    @commands.command()
-    async def join(self, ctx: commands.Context, *, channel: discord.VoiceChannel):
-        """Joins a voice channel."""
-        self.join_channel(ctx, channel=channel)
-
-    @commands.command()
-    async def stop(self, ctx: commands.Context):
+    async def disconnect_vc(self, ctx: commands.Context):
         """Disconnects the bot from voice channel."""
         await ctx.voice_client.disconnect()

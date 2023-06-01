@@ -1,39 +1,17 @@
-import discord
 from discord.ext import commands
 
-from lib.ytdl import YTDLSource
 from lib.cogs.cog import CommonCog
+from lib.ytdl import YTDLSource
 
 
+# TODO: add pause/resume, skips, queue system, and maybe audio scrubbing
 class MusicCog(CommonCog):
     """Commands related to playing music."""
 
     @commands.command()
-    async def play(self, ctx, *, query):
-        """Plays a file from the local filesystem"""
-
-        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
-        ctx.voice_client.play(
-            source, after=lambda e: print(f"Player error: {e}") if e else None
-        )
-
-        await ctx.send(f"Now playing: {query}")
-
-    @commands.command()
-    async def yt(self, ctx, *, url):
+    async def play(self, ctx: commands.Context, *, url):
         """Plays from a url (almost anything youtube_dl supports)"""
-
-        async with ctx.typing():
-            player = await YTDLSource.from_url(url, loop=self.bot.loop)
-            ctx.voice_client.play(
-                player, after=lambda e: print(f"Player error: {e}") if e else None
-            )
-
-        await ctx.send(f"Now playing: {player.title}")
-
-    @commands.command()
-    async def stream(self, ctx, *, url):
-        """Streams from a url (same as yt, but doesn't predownload)"""
+        await self.acknowledge(ctx)
 
         async with ctx.typing():
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
@@ -42,33 +20,27 @@ class MusicCog(CommonCog):
             )
 
         await ctx.send(f"Now playing: {player.title}")
+        await self.finish(ctx)
 
     @commands.command()
-    async def volume(self, ctx, volume: int):
+    async def volume(self, ctx: commands.Context, volume: int):
         """Changes the player's volume"""
+        await self.acknowledge(ctx)
 
         if ctx.voice_client is None:
             return await ctx.send("Not connected to a voice channel.")
 
         # TODO: add some input validation here
         ctx.voice_client.source.volume = volume / 100
+
         await ctx.send(f"Changed volume to {volume}%")
+        await self.finish(ctx)
 
     @commands.command()
-    async def stop(self, ctx):
+    async def stop(self, ctx: commands.Context):
         """Stops and disconnects the bot from voice"""
-
-        await ctx.voice_client.disconnect()
+        await self.disconnect_vc(ctx)
 
     @play.before_invoke
-    @yt.before_invoke
-    @stream.before_invoke
-    async def ensure_voice(self, ctx):
-        if ctx.voice_client is None:
-            if ctx.author.voice:
-                await ctx.author.voice.channel.connect()
-            else:
-                await ctx.send("You are not connected to a voice channel.")
-                raise commands.CommandError("Author not connected to a voice channel.")
-        elif ctx.voice_client.is_playing():
-            ctx.voice_client.stop()
+    async def ensure_voice(self, ctx: commands.Context):
+        await self.join_authors_vc(ctx)
