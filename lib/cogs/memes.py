@@ -14,7 +14,7 @@ class MemeCog(CommonCog):
     @commands.command()
     async def roulette(self, ctx: commands.Context):
         """Plays a gunshot sounds and kicks a random user from the voice channel."""
-        self.acknowledge(ctx)
+        await self.acknowledge(ctx)
 
         # validate user is in voice channel
         voice_channel = None
@@ -31,8 +31,8 @@ class MemeCog(CommonCog):
         gun_sound = YTDLSource.from_file("sounds/roulette.wav")
 
         # connect to voice channel and play sound
-        voice_client = await self.join_authors_vc(ctx)
-        voice_client.play(gun_sound)
+        await self.join_authors_vc(ctx)
+        ctx.voice_client.play(gun_sound)
 
         # sleep so user can hear gunshot before they go
         await self.sleep(gun_sound.data["duration"])
@@ -46,7 +46,7 @@ class MemeCog(CommonCog):
     @commands.command()
     async def driveby(self, ctx: commands.Context):
         """Plays machine gun sound while kicking multiple people from the voice channel."""
-        self.acknowledge(ctx)
+        await self.acknowledge(ctx)
 
         # validate user is in voice channel
         voice_channel = None
@@ -61,10 +61,10 @@ class MemeCog(CommonCog):
             return
 
         # join voice_channel and play machine gun sound
-        machine_gun_sound = await YTDLSource.from_url("sounds/machine_gun.wav")
+        machine_gun_sound = YTDLSource.from_file("sounds/machine_gun.wav")
 
-        voice_client = await self.join_authors_vc(ctx)
-        voice_client.play(machine_gun_sound)
+        await self.join_authors_vc(ctx)
+        ctx.voice_client.play(machine_gun_sound)
 
         # initial wait so everyone can here the "CHK CHK"
         await self.sleep(1)
@@ -73,7 +73,7 @@ class MemeCog(CommonCog):
 
         # keep going until everyone has been kicked
         while targets:
-            await self.sleep(random.uniform(1, 2))
+            await self.sleep(random.uniform(0.5, 1.5))
             user = random.choice(targets)
             await user.edit(voice_channel=None)
             targets.remove(user)
@@ -86,7 +86,7 @@ class MemeCog(CommonCog):
     @commands.command()
     async def grenade(self, ctx: commands.Context):
         """Plays grenade sound while everyone is scattered across various channels."""
-        self.acknowledge(ctx)
+        await self.acknowledge(ctx)
 
         # validate user is in voice channel
         voice_channel = None
@@ -101,10 +101,10 @@ class MemeCog(CommonCog):
             return
 
         # join voice_channel and play grenade sound
-        grenade_sound = await YTDLSource.from_url("sounds/grenade_oh_fudge.wav")
+        grenade_sound = YTDLSource.from_file("sounds/grenade_oh_fudge.wav")
 
-        voice_client = await self.join_authors_vc(ctx)
-        voice_client.play(grenade_sound)
+        await self.join_authors_vc(ctx)
+        ctx.voice_client.play(grenade_sound)
 
         all_voice_channels = voice_channel.guild.voice_channels
 
