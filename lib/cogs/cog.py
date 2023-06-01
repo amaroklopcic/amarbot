@@ -5,9 +5,9 @@ from discord.ext import commands
 
 
 class CommonCog(commands.Cog):
-    emoji_ack = ":hourglass_flowing_sand:"
-    emoji_finish = ":ballot_box_with_check:"
-    emoji_error = ":no_entry_sign:"
+    emoji_ack = "⏳"
+    emoji_finish = "☑️"
+    emoji_error = "🚫"
 
     def __init__(self, bot: commands.Bot) -> None:
         super().__init__()
