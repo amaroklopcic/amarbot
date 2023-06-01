@@ -125,3 +125,21 @@ class MemeCog(CommonCog):
 
         await self.disconnect_vc(ctx)
         await self.finish(ctx)
+
+    # -vvv- commands suggested by Tunu -vvv-
+    @commands.command()
+    async def minecraft(self, ctx: commands.Context):
+        """Plays grenade sound while everyone is scattered across various channels."""
+        await self.acknowledge(ctx)
+
+        await self.join_authors_vc(ctx)
+
+        # join voice_channel and play minecraft music video
+        url = "https://www.youtube.com/watch?v=kMlLz7stjwc"
+        minecraft_meme_music = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+        ctx.voice_client.play(
+            minecraft_meme_music, after=lambda e: print(f"Player error: {e}") if e else None
+        )
+
+        await ctx.send("NOW PLAYING: TUNUS FAVORITE SONG")
+        await self.finish(ctx)
