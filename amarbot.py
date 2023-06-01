@@ -9,7 +9,7 @@ from discord.utils import setup_logging, MISSING
 from dotenv import load_dotenv
 from lib.cogs.commands import CommandsCog
 
-# from lib.cogs.music import MusicCog
+from lib.cogs.music import MusicCog
 
 
 intents = discord.Intents.default()
@@ -27,7 +27,7 @@ async def on_ready():
 async def main():
     async with bot:
         await bot.add_cog(CommandsCog(bot))
-        # await bot.add_cog(MusicCog(bot))
+        await bot.add_cog(MusicCog(bot))
         await bot.start(os.environ.get("AMARBOT_TOKEN"))
 
 
