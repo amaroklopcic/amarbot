@@ -14,7 +14,7 @@ jobs:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
       - name: Deploy amarbot
-        script: |
+        run: |
           # setup an ssh connection to the droplet
           doctl compute ssh amarbot
 
