@@ -1,0 +1,27 @@
+name: Deploy
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Deploy amarbot
+        script: |
+          # setup an ssh connection to the droplet
+          doctl compute ssh amarbot
+
+          # pull latest changes
+          cd amarbot
+          git pull
+
+          # restart amarbot
+          pm2 stop amarbot
+          pm2 start amarbot
