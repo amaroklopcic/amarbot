@@ -27,6 +27,9 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v1.1.1
 
+      - name: Configure Docker Client of gcloud
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
       - name: Push build to GCP Artifact Registry
         run: docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/amarbot/amarbot:latest
 
