@@ -33,8 +33,9 @@ jobs:
       - name: Push build to GCP Artifact Registry
         run: docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/amarbot/amarbot:latest
 
+      # || true so the build doesn't fail if amarbot VM doesnt exist
       - name: Stop & deleted amarbot instance
-        run: yes | gcloud compute instances delete amarbot --zone us-central1-a
+        run: echo "y" | gcloud compute instances delete amarbot --zone us-central1-a || true
 
       - name: Create new amarbot instance
         run: |-
