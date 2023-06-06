@@ -8,7 +8,7 @@ RUN apt install git -y
 RUN git --version
 
 # install ffmpeg
-RUN apt install ffmpeg
+RUN apt install ffmpeg -y
 RUN ffmpeg -version
 
 WORKDIR /app
