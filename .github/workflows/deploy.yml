@@ -14,10 +14,10 @@ jobs:
       # TODO: add multiple tags with versions so we can later rollback if needed
       - name: Build Docker Image
         run: |-
-          docker build \
+          docker build . \
             --tag us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/amarbot/amarbot \
-            --file ./docker/Dockerfile .
-      
+            --file ./docker/Dockerfile
+
       # TODO: switch to Workload Identity Federation authentication
       - name: Setup GCP auth
         uses: google-github-actions/auth@v1.1.1
