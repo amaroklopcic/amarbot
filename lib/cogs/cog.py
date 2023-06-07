@@ -5,8 +5,6 @@ from discord.ext import commands
 
 
 class CommonCog(commands.Cog):
-    developer_role_id = "385543611191787530"
-
     emoji_ack = "⏳"
     emoji_finish = "☑️"
     emoji_reject = "🚫"
@@ -64,23 +62,3 @@ class CommonCog(commands.Cog):
     async def disconnect_vc(self, ctx: commands.Context):
         """Disconnects the bot from voice channel."""
         await ctx.voice_client.disconnect()
-
-    # -vvv- event listeners -vvv-
-    @commands.Cog.listener()
-    async def on_command(self, ctx: commands.Context):
-        await self.acknowledge(ctx)
-
-    @commands.Cog.listener()
-    async def on_command_completion(self, ctx: commands.Context):
-        await self.finish(ctx)
-
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx: commands.Context, error):
-        if isinstance(error, commands.errors.CommandNotFound):
-            await self.react_reject(ctx)
-        else:
-            await self.react_error(ctx)
-            await ctx.send(
-                f"Something went wrong! Sorry :(\n"
-                "<@&{self.developer_role_id}>"
-            )
