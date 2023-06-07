@@ -5,9 +5,12 @@ from discord.ext import commands
 
 
 class CommonCog(commands.Cog):
+    developer_role_id = "385543611191787530"
+
     emoji_ack = "⏳"
     emoji_finish = "☑️"
-    emoji_error = "🚫"
+    emoji_reject = "🚫"
+    emoji_error = "⚠️"
 
     def __init__(self, bot: commands.Bot) -> None:
         super().__init__()
@@ -32,10 +35,15 @@ class CommonCog(commands.Cog):
         await ctx.message.add_reaction(self.emoji_finish)
         await ctx.message.remove_reaction(self.emoji_ack, self.bot.user)
 
+    async def react_reject(self, ctx: commands.Context):
+        """Removes `emoji_ack` and adds `emoji_error` to users issued command."""
+        await ctx.message.add_reaction(self.emoji_reject)
+        await ctx.message.remove_reaction(self.emoji_ack, self.bot.user)
+
     async def react_error(self, ctx: commands.Context):
         """Removes `emoji_ack` and adds `emoji_error` to users issued command."""
-        await ctx.message.remove_reaction(self.emoji_ack, self.bot.user)
         await ctx.message.add_reaction(self.emoji_error)
+        await ctx.message.remove_reaction(self.emoji_ack, self.bot.user)
 
     # -vvv- voice channel related commands -vvv-
     async def join_authors_vc(self, ctx: commands.Context):
@@ -56,3 +64,23 @@ class CommonCog(commands.Cog):
     async def disconnect_vc(self, ctx: commands.Context):
         """Disconnects the bot from voice channel."""
         await ctx.voice_client.disconnect()
+
+    # -vvv- event listeners -vvv-
+    @commands.Cog.listener()
+    async def on_command(self, ctx: commands.Context):
+        await self.acknowledge(ctx)
+
+    @commands.Cog.listener()
+    async def on_command_completion(self, ctx: commands.Context):
+        await self.finish(ctx)
+
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx: commands.Context, error):
+        if isinstance(error, commands.errors.CommandNotFound):
+            await self.react_reject(ctx)
+        else:
+            await self.react_error(ctx)
+            await ctx.send(
+                f"Something went wrong! Sorry :(\n"
+                "<@&{self.developer_role_id}>"
+            )
