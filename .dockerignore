@@ -15,5 +15,4 @@ env.bak/
 venv.bak/
 
 # Log files
-logs/
 *.log
