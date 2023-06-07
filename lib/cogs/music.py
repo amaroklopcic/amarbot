@@ -8,6 +8,10 @@ from lib.ytdl import YTDLSource
 class MusicCog(CommonCog):
     """Commands related to playing music."""
 
+    def __init__(self, bot: commands.Bot) -> None:
+        super().__init__(bot)
+        self._queue = []
+
     @commands.command()
     async def play(self, ctx: commands.Context, *, url):
         """Plays from a url (almost anything youtube_dl supports)"""
@@ -51,6 +55,61 @@ class MusicCog(CommonCog):
             return await ctx.send("Not connected to a voice channel.")
 
         await ctx.voice_client.resume()
+
+    @commands.command()
+    async def queue(self, ctx: commands.Context, *, url: str):
+        """Add a song to the queue"""
+        if ctx.voice_client is None:
+            return await ctx.send("Not connected to a voice channel.")
+
+        async with ctx.typing():
+            player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+            await ctx.send(
+                f"Added to queue: {player.title} ({len(self._queue)} in queue)"
+            )
+            self._queue.append(player)
+
+    @commands.command()
+    async def pop(self, ctx: commands.Context, *, index: str):
+        """Remove a song from the queue at index (default last)"""
+        if ctx.voice_client is None:
+            return await ctx.send("Not connected to a voice channel.")
+
+        async with ctx.typing():
+            if len(self._queue) < 2:
+                await ctx.send("No songs in the queue")
+                return
+
+            player = self._queue.pop(index or -1)
+            await ctx.send(
+                f"Removed from queue: {player.title} ({len(self._queue)} in queue)"
+            )
+
+    @commands.command()
+    async def list(self, ctx: commands.Context):
+        """List out the current queue"""
+        if ctx.voice_client is None:
+            return await ctx.send("Not connected to a voice channel.")
+
+        async with ctx.typing():
+            list_str = "Songs in the current queue:\n"
+            for index, player in enumerate(self._queue):
+                list_str += f"> {index + 1}. {player.title}"
+                if index == 0:
+                    list_str += " *(currently playing)*\n"
+                else:
+                    list_str += "\n"
+
+            await ctx.send(list_str.strip())            
+
+    @commands.command()
+    async def skip(self, ctx: commands.Context):
+        """Skip the current playing song"""
+        if ctx.voice_client is None:
+            return await ctx.send("Not connected to a voice channel.")
+
+        async with ctx.typing():
+            pass
 
     @commands.command()
     async def stop(self, ctx: commands.Context):
