@@ -7,15 +7,18 @@ from discord.ext import commands
 class CommonCog(commands.Cog):
     emoji_ack = "⏳"
     emoji_finish = "☑️"
-    emoji_error = "🚫"
+    emoji_reject = "🚫"
+    emoji_error = "⚠️"
 
     def __init__(self, bot: commands.Bot) -> None:
         super().__init__()
         self.bot = bot
 
+    # -vvv- helper methods -vvv-
     async def sleep(self, duration: float):
         await asyncio.sleep(duration)
 
+    # -vvv- emoji reactions -vvv-
     async def acknowledge(self, ctx: commands.Context):
         """Adds `emoji_ack` to users issued command."""
         await ctx.message.add_reaction(self.emoji_ack)
@@ -27,14 +30,26 @@ class CommonCog(commands.Cog):
 
     async def finish(self, ctx: commands.Context):
         """Removes `emoji_ack` and adds `emoji_finish` to users issued command."""
-        await ctx.message.remove_reaction(self.emoji_ack, self.bot.user)
-        await ctx.message.add_reaction(self.emoji_finish)
+        await asyncio.gather(
+            ctx.message.add_reaction(self.emoji_finish),
+            ctx.message.remove_reaction(self.emoji_ack, self.bot.user),
+        )
+
+    async def react_reject(self, ctx: commands.Context):
+        """Removes `emoji_ack` and adds `emoji_error` to users issued command."""
+        await asyncio.gather(
+            ctx.message.add_reaction(self.emoji_reject),
+            ctx.message.remove_reaction(self.emoji_ack, self.bot.user),
+        )
 
     async def react_error(self, ctx: commands.Context):
         """Removes `emoji_ack` and adds `emoji_error` to users issued command."""
-        await ctx.message.remove_reaction(self.emoji_ack, self.bot.user)
-        await ctx.message.add_reaction(self.emoji_error)
+        await asyncio.gather(
+            ctx.message.add_reaction(self.emoji_error),
+            ctx.message.remove_reaction(self.emoji_ack, self.bot.user),
+        )
 
+    # -vvv- voice channel related commands -vvv-
     async def join_authors_vc(self, ctx: commands.Context):
         """Joins a users voice channel (`ctx.author.voice.channel`)."""
         if ctx.voice_client is None:

@@ -8,8 +8,6 @@ class CommandsCog(CommonCog):
     @commands.command()
     async def count(self, ctx: commands.Context):
         """Returns total number of text messages from author in a channel."""
-        await self.acknowledge(ctx)
-
         count = 0
         author = ctx.message.author.mention
         async for message in ctx.message.channel.history(limit=None):
@@ -19,16 +17,12 @@ class CommandsCog(CommonCog):
             f"{author} has {count} total text messages in this channel."
         )
 
-        await self.finish(ctx)
-
     @commands.command()
     async def channel_count(self, ctx: commands.Context):
         """Returns total number of text messages in a channel."""
-        await self.acknowledge(ctx)
         count = 0
         async for message in ctx.message.channel.history(limit=None):
             count += 1
         await ctx.message.channel.send(
             f"There are a total of {count} text messages in the channel."
         )
-        await self.finish(ctx)
