@@ -14,18 +14,17 @@ class MemeCog(CommonCog):
     @commands.command()
     async def roulette(self, ctx: commands.Context):
         """Plays a gunshot sounds and kicks a random user from the voice channel."""
-        await self.acknowledge(ctx)
 
         # validate user is in voice channel
         voice_channel = None
         if ctx.author.voice:
             voice_channel = ctx.author.voice.channel
         else:
-            await self.react_error(ctx)
+            await self.react_reject(ctx)
             return
 
         if len(voice_channel.members) < 1:
-            await self.react_error(ctx)
+            await self.react_reject(ctx)
             return
 
         gun_sound = YTDLSource.from_file("sounds/roulette.wav")
@@ -41,23 +40,21 @@ class MemeCog(CommonCog):
         await chosen_one.edit(voice_channel=None)
 
         await self.disconnect_vc(ctx)
-        await self.finish(ctx)
 
     @commands.command()
     async def driveby(self, ctx: commands.Context):
         """Plays machine gun sound while kicking multiple people from the voice channel."""
-        await self.acknowledge(ctx)
 
         # validate user is in voice channel
         voice_channel = None
         if ctx.author.voice:
             voice_channel = ctx.author.voice.channel
         else:
-            await self.react_error(ctx)
+            await self.react_reject(ctx)
             return
 
         if len(voice_channel.members) < 1:
-            await self.react_error(ctx)
+            await self.react_reject(ctx)
             return
 
         # join voice_channel and play machine gun sound
@@ -81,23 +78,21 @@ class MemeCog(CommonCog):
                 break
 
         await self.disconnect_vc(ctx)
-        await self.finish(ctx)
 
     @commands.command()
     async def grenade(self, ctx: commands.Context):
         """Plays grenade sound while everyone is scattered across various channels."""
-        await self.acknowledge(ctx)
 
         # validate user is in voice channel
         voice_channel = None
         if ctx.author.voice:
             voice_channel = ctx.author.voice.channel
         else:
-            await self.react_error(ctx)
+            await self.react_reject(ctx)
             return
 
         if len(voice_channel.members) < 1:
-            await self.react_error(ctx)
+            await self.react_reject(ctx)
             return
 
         # join voice_channel and play grenade sound
@@ -124,49 +119,48 @@ class MemeCog(CommonCog):
             await member.edit(voice_channel=random.choice(available_channels))
 
         await self.disconnect_vc(ctx)
-        await self.finish(ctx)
 
     # -vvv- commands suggested by Tunu -vvv-
     @commands.command()
     async def minecraft(self, ctx: commands.Context):
         """Plays grenade sound while everyone is scattered across various channels."""
-        await self.acknowledge(ctx)
 
         await self.join_authors_vc(ctx)
 
         # join voice_channel and play minecraft music video
         url = "https://www.youtube.com/watch?v=kMlLz7stjwc"
-        minecraft_meme_music = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+        minecraft_meme_music = await YTDLSource.from_url(
+            url, loop=self.bot.loop, stream=True
+        )
         ctx.voice_client.play(
-            minecraft_meme_music, after=lambda e: print(f"Player error: {e}") if e else None
+            minecraft_meme_music,
+            after=lambda e: print(f"Player error: {e}") if e else None,
         )
 
         await ctx.send("NOW PLAYING: TUNUS FAVORITE SONG")
-        await self.finish(ctx)
 
     # -vvv- commands suggested by Sandi -vvv-
     @commands.command()
     async def smd(self, ctx: commands.Context):
         """Plays grenade sound while everyone is scattered across various channels."""
-        await self.acknowledge(ctx)
 
         await self.join_authors_vc(ctx)
 
         # join voice_channel and play minecraft music video
         url = "https://www.youtube.com/watch?v=VmBMxMivJXQ&t=4s"
-        grapefruit_video = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+        grapefruit_video = await YTDLSource.from_url(
+            url, loop=self.bot.loop, stream=True
+        )
         ctx.voice_client.play(
             grapefruit_video, after=lambda e: print(f"Player error: {e}") if e else None
         )
 
         await ctx.send("NOW PLAYING: SANDIS FAVORITE TECHNIQUE")
-        await self.finish(ctx)
 
     # -vvv- commands suggested by Aladin -vvv-
     @commands.command()
     async def goggins(self, ctx: commands.Context):
         """Plays grenade sound while everyone is scattered across various channels."""
-        await self.acknowledge(ctx)
 
         goggins_quotes = [
             "The most important conversations you’ll ever have are the ones you’ll have with yourself. You wake up with them, you walk around with them, you go to bed with them, and eventually, you act on them. Whether they be good or bad. We are all our own worst haters and doubters because self-doubt is a natural reaction to any bold attempt to change your life for the better. You can’t stop it from blooming in your brain, but you can neutralize it, and all the other external chatter by asking, What if?",
@@ -232,6 +226,4 @@ class MemeCog(CommonCog):
             "YOU DONT KNOW ME SON",
         ]
 
-        await ctx.send(f"> \"{random.choice(goggins_quotes)}\" - **David Goggins**")
-
-        await self.finish(ctx)
+        await ctx.send(f'> "{random.choice(goggins_quotes)}" - **David Goggins**')
