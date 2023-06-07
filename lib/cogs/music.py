@@ -37,6 +37,22 @@ class MusicCog(CommonCog):
         await self.finish(ctx)
 
     @commands.command()
+    async def pause(self, ctx: commands.Context):
+        """Pause the music player"""
+        if ctx.voice_client is None:
+            return await ctx.send("Not connected to a voice channel.")
+
+        await ctx.voice_client.pause()
+
+    @commands.command()
+    async def resume(self, ctx: commands.Context):
+        """Resume the music player"""
+        if ctx.voice_client is None:
+            return await ctx.send("Not connected to a voice channel.")
+
+        await ctx.voice_client.resume()
+
+    @commands.command()
     async def stop(self, ctx: commands.Context):
         """Stops and disconnects the bot from voice"""
         await self.disconnect_vc(ctx)
