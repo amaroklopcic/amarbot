@@ -1,3 +1,5 @@
+import asyncio
+
 from discord.ext import commands
 
 from lib.cogs.cog import CommonCog
@@ -22,7 +24,9 @@ class Acknowledge(CommonCog):
         if isinstance(error, commands.errors.CommandNotFound):
             await self.react_reject(ctx)
         else:
-            await self.react_error(ctx)
-            await ctx.send(
-                "Something went wrong! Sorry :(\n" f"<@&{self.developer_role_id}>"
+            await asyncio.gather(
+                self.react_error(ctx),
+                ctx.send(
+                    "Something went wrong! Sorry :(\n" f"<@&{self.developer_role_id}>"
+                ),
             )
