@@ -11,7 +11,6 @@ class MusicCog(CommonCog):
     @commands.command()
     async def play(self, ctx: commands.Context, *, url):
         """Plays from a url (almost anything youtube_dl supports)"""
-        await self.acknowledge(ctx)
 
         async with ctx.typing():
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
@@ -20,12 +19,10 @@ class MusicCog(CommonCog):
             )
 
         await ctx.send(f"Now playing: {player.title}")
-        await self.finish(ctx)
 
     @commands.command()
     async def volume(self, ctx: commands.Context, volume: int):
         """Changes the player's volume"""
-        await self.acknowledge(ctx)
 
         if ctx.voice_client is None:
             return await ctx.send("Not connected to a voice channel.")
@@ -34,7 +31,6 @@ class MusicCog(CommonCog):
         ctx.voice_client.source.volume = volume / 100
 
         await ctx.send(f"Changed volume to {volume}%")
-        await self.finish(ctx)
 
     @commands.command()
     async def stop(self, ctx: commands.Context):
