@@ -46,7 +46,7 @@ class MusicCog(CommonCog):
         if ctx.voice_client is None:
             return await ctx.send("Not connected to a voice channel.")
 
-        await ctx.voice_client.pause()
+        ctx.voice_client.pause()
 
     @commands.command()
     async def resume(self, ctx: commands.Context):
@@ -54,7 +54,7 @@ class MusicCog(CommonCog):
         if ctx.voice_client is None:
             return await ctx.send("Not connected to a voice channel.")
 
-        await ctx.voice_client.resume()
+        ctx.voice_client.resume()
 
     @commands.command()
     async def queue(self, ctx: commands.Context, *, url: str):
