@@ -8,6 +8,7 @@ from discord.ext import commands
 from discord.utils import MISSING, setup_logging
 from dotenv import load_dotenv
 
+from lib.cogs.ack import Acknowledge
 from lib.cogs.commands import CommandsCog
 from lib.cogs.memes import MemeCog
 from lib.cogs.music import MusicCog
@@ -26,6 +27,7 @@ async def on_ready():
 
 async def main():
     async with bot:
+        await bot.add_cog(Acknowledge(bot))
         await bot.add_cog(CommandsCog(bot))
         await bot.add_cog(MusicCog(bot))
         await bot.add_cog(MemeCog(bot))
