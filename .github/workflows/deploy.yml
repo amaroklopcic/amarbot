@@ -1,0 +1,61 @@
+name: Deploy
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build_push_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # TODO: add multiple tags with versions so we can later rollback if needed
+      - name: Build Docker Image
+        run: |-
+          docker build . \
+            --tag us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/amarbot/amarbot \
+            --file ./docker/Dockerfile
+
+      # TODO: switch to Workload Identity Federation authentication
+      - name: Setup GCP auth
+        uses: google-github-actions/auth@v1.1.1
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v1.1.1
+
+      - name: Configure Docker Client of gcloud
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Push build to GCP Artifact Registry
+        run: docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/amarbot/amarbot:latest
+
+      # || true so the build doesn't fail if amarbot VM doesnt exist
+      - name: Stop & deleted amarbot instance
+        run: echo "y" | gcloud compute instances delete amarbot --zone us-central1-a || true
+
+      - name: Create new amarbot instance
+        run: |-
+          gcloud compute instances create-with-container amarbot \
+            --project=${{ secrets.GCP_PROJECT }} \
+            --zone=us-central1-a \
+            --machine-type=f1-micro \
+            --network-interface=network-tier=PREMIUM,subnet=default \
+            --maintenance-policy=MIGRATE \
+            --provisioning-model=STANDARD \
+            --service-account=440663722408-compute@developer.gserviceaccount.com \
+            --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
+            --image=projects/cos-cloud/global/images/cos-stable-105-17412-101-13 \
+            --boot-disk-size=10GB \
+            --boot-disk-type=pd-balanced \
+            --boot-disk-device-name=amarbot \
+            --container-image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/amarbot/amarbot:latest \
+            --container-restart-policy=always \
+            --container-env=AMARBOT_PUBLIC_KEY=${{ secrets.AMARBOT_PUBLIC_KEY }},AMARBOT_TOKEN=${{ secrets.AMARBOT_TOKEN }} \
+            --no-shielded-secure-boot \
+            --shielded-vtpm \
+            --shielded-integrity-monitoring \
+            --labels=goog-ec-src=vm_add-gcloud,container-vm=cos-stable-105-17412-101-13
