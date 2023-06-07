@@ -30,18 +30,24 @@ class CommonCog(commands.Cog):
 
     async def finish(self, ctx: commands.Context):
         """Removes `emoji_ack` and adds `emoji_finish` to users issued command."""
-        await ctx.message.add_reaction(self.emoji_finish)
-        await ctx.message.remove_reaction(self.emoji_ack, self.bot.user)
+        await asyncio.gather(
+            ctx.message.add_reaction(self.emoji_finish),
+            ctx.message.remove_reaction(self.emoji_ack, self.bot.user),
+        )
 
     async def react_reject(self, ctx: commands.Context):
         """Removes `emoji_ack` and adds `emoji_error` to users issued command."""
-        await ctx.message.add_reaction(self.emoji_reject)
-        await ctx.message.remove_reaction(self.emoji_ack, self.bot.user)
+        await asyncio.gather(
+            ctx.message.add_reaction(self.emoji_reject),
+            ctx.message.remove_reaction(self.emoji_ack, self.bot.user),
+        )
 
     async def react_error(self, ctx: commands.Context):
         """Removes `emoji_ack` and adds `emoji_error` to users issued command."""
-        await ctx.message.add_reaction(self.emoji_error)
-        await ctx.message.remove_reaction(self.emoji_ack, self.bot.user)
+        await asyncio.gather(
+            ctx.message.add_reaction(self.emoji_error),
+            ctx.message.remove_reaction(self.emoji_ack, self.bot.user),
+        )
 
     # -vvv- voice channel related commands -vvv-
     async def join_authors_vc(self, ctx: commands.Context):
