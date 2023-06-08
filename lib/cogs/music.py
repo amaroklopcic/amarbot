@@ -21,10 +21,6 @@ class MusicCog(CommonCog):
                 self._play(self.last_ctx, self._queue[0])
             )
 
-    @commands.command()
-    async def play(self, ctx: commands.Context, *, url):
-        """Plays from a url (almost anything youtube_dl supports)"""
-
     async def _play(self, ctx: commands.Context, url):
         async with ctx.typing():
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
