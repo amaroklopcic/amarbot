@@ -19,11 +19,11 @@ class MusicCog(CommonCog):
         """Plays from a query or url (almost anything youtube_dl supports)"""
         async with ctx.typing():
             self.controller.update_ctx(ctx)
-            # TODO: this resets the queue, intended behavior is supposed to be
-            # replacing index 0 with the new song so the queue can continue
-            # playing once the song finishes
+            # TODO: this plays the next song in the queue and adds the url to next
+            # song in queue. intended behavior is url replaces index 0 and restarts
+            # the player
             try:
-                self.controller.queue[0] = url
+                self.controller.queue.insert(1, url)
             except IndexError:
                 self.controller.push(url)
             self.controller.play()
@@ -35,7 +35,9 @@ class MusicCog(CommonCog):
         if ctx.voice_client is None:
             return await ctx.send("Not connected to a voice channel.")
 
-        # TODO: add some input validation here
+        if volume < 1 or volume > 100:
+            return await ctx.send("Volume must be in range of 1-100.")
+
         ctx.voice_client.source.volume = volume / 100
 
         await ctx.send(f"Changed volume to {volume}%")
@@ -153,9 +155,7 @@ class MusicController:
         await self._song_finished_event.wait()
 
     def _on_song_finish(self, error):
-        # TODO: check and make sure this is still getting ran after we run the stop
-        # command
-        print("_on_song_finish")
+        # NOTE: doesnt run if the stop command is issued
         if error:
             print(f"Player error: {error}")
 
