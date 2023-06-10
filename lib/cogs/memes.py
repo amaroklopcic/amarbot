@@ -123,7 +123,7 @@ class MemeCog(CommonCog):
     # -vvv- commands suggested by Tunu -vvv-
     @commands.command()
     async def minecraft(self, ctx: commands.Context):
-        """Plays grenade sound while everyone is scattered across various channels."""
+        """Plays the "Mining - Minecraft Parody of Drowning" music video."""
 
         await self.join_authors_vc(ctx)
 
@@ -142,7 +142,7 @@ class MemeCog(CommonCog):
     # -vvv- commands suggested by Sandi -vvv-
     @commands.command()
     async def smd(self, ctx: commands.Context):
-        """Plays grenade sound while everyone is scattered across various channels."""
+        """Plays the grapefruit technique video. I'm sorry."""
 
         await self.join_authors_vc(ctx)
 
@@ -160,7 +160,7 @@ class MemeCog(CommonCog):
     # -vvv- commands suggested by Aladin -vvv-
     @commands.command()
     async def goggins(self, ctx: commands.Context):
-        """Plays grenade sound while everyone is scattered across various channels."""
+        """Drops a motivational quote from David Goggins."""
 
         goggins_quotes = [
             "The most important conversations you’ll ever have are the ones you’ll have with yourself. You wake up with them, you walk around with them, you go to bed with them, and eventually, you act on them. Whether they be good or bad. We are all our own worst haters and doubters because self-doubt is a natural reaction to any bold attempt to change your life for the better. You can’t stop it from blooming in your brain, but you can neutralize it, and all the other external chatter by asking, What if?",
