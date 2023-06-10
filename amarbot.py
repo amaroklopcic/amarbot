@@ -1,7 +1,5 @@
 import asyncio
-import datetime
 import os
-import random
 
 import discord
 from discord.ext import commands
@@ -13,10 +11,18 @@ from lib.cogs.commands import CommandsCog
 from lib.cogs.memes import MemeCog
 from lib.cogs.music import MusicCog
 
+COMMAND_PREFIX = "."
+
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix=".", intents=intents)
+bot = commands.Bot(
+    command_prefix=COMMAND_PREFIX,
+    intents=intents,
+    activity=discord.Activity(
+        type=discord.ActivityType.listening, name=f"{COMMAND_PREFIX}help"
+    ),
+)
 
 
 @bot.event
