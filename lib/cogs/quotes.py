@@ -1,5 +1,4 @@
 import os
-from zoneinfo import ZoneInfo
 
 import aiocron
 import aiohttp
@@ -23,10 +22,7 @@ class Quotes(commands.Cog):
         self.base_url = "https://quotes.rest"
         self.api_token = os.environ.get("THEYSAIDSO_API_TOKEN")
         self.qod_cron = aiocron.crontab(
-            "0 7 * * *",
-            func=self.qod,
-            loop=self.bot.loop,
-            tz=ZoneInfo("US/Central")
+            "30 12 * * *", func=self.qod, loop=self.bot.loop
         )
 
     async def make_request(self, url: str, method: str = "GET", **kwargs):
@@ -82,5 +78,4 @@ class Quotes(commands.Cog):
         for guild in self.bot.guilds:
             for channel in guild.channels:
                 if channel.type == ChannelType.text and channel.name == channel_name:
-                    # await channel.send(f'*"{quote}"* - {author}')
-                    await channel.send("names ron")
+                    await channel.send(f'*"{quote}"* - {author}')
