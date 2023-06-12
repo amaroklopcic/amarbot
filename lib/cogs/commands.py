@@ -1,28 +1,31 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 
-from lib.cogs.cog import CommonCog
 
-
-class CommandsCog(CommonCog):
-    @commands.command()
-    async def count(self, ctx: commands.Context):
+class CommandsCog(commands.GroupCog, group_name="utils"):
+    @app_commands.command()
+    async def count(self, interaction: discord.Interaction):
         """Returns total number of text messages from author in a channel."""
+        await interaction.response.defer()
         count = 0
-        author = ctx.message.author.mention
-        async for message in ctx.message.channel.history(limit=None):
-            if message.author == ctx.message.author:
+        channel = interaction.channel
+        author = interaction.user
+        async for message in channel.history(limit=None):
+            if message.author == author:
                 count += 1
-        await ctx.message.channel.send(
-            f"{author} has {count} total text messages in this channel."
+        await interaction.followup.send(
+            f"{author.mention} has {count} total text messages in this channel."
         )
 
-    @commands.command()
-    async def channel_count(self, ctx: commands.Context):
+    @app_commands.command()
+    async def channel_count(self, interaction: discord.Interaction):
         """Returns total number of text messages in a channel."""
+        await interaction.response.defer()
         count = 0
-        async for message in ctx.message.channel.history(limit=None):
+        channel = interaction.channel
+        async for message in channel.history(limit=None):
             count += 1
-        await ctx.message.channel.send(
+        await interaction.followup.send(
             f"There are a total of {count} text messages in the channel."
         )

@@ -10,6 +10,8 @@ from lib.cogs.ack import Acknowledge
 from lib.cogs.commands import CommandsCog
 from lib.cogs.memes import MemeCog
 from lib.cogs.music import MusicCog
+from lib.cogs.quotes import Quotes
+from lib.cogs.sync import SyncCog
 
 COMMAND_PREFIX = "."
 
@@ -37,6 +39,8 @@ async def main():
         await bot.add_cog(CommandsCog(bot))
         await bot.add_cog(MusicCog(bot))
         await bot.add_cog(MemeCog(bot))
+        await bot.add_cog(Quotes(bot))
+        await bot.add_cog(SyncCog(bot))
         await bot.start(os.environ.get("AMARBOT_TOKEN"))
 
 
