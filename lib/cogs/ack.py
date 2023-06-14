@@ -30,3 +30,4 @@ class Acknowledge(CommonCog):
                     "Something went wrong! Sorry :(\n" f"<@&{self.developer_role_id}>"
                 ),
             )
+            raise error

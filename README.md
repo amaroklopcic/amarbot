@@ -22,8 +22,10 @@ want to use this bot, you'll have to host it yourself.
 - `volume {1-100}` --> Changes the music player's volume.
 
 ### Utility Commands
-- `count` --> Returns total number of text messages from author in a channel.
-- `channel_count` --> Returns total number of text messages in a channel.
+- `utils count` --> Returns total number of text messages from author in a channel.
+- `utils channel_count` --> Returns total number of text messages in a channel.
+- `utils guild_export` --> Returns all the messages from all the channels in a Discord 
+guild, as a JSON file in your DMs. For owners only.
 
 ### Fun / Meme Commands
 For obvious reasons, these commands are likely to be removed or disabled in a
@@ -41,6 +43,9 @@ music video.
 - `goggins` --> Drops a motivational quote from
 [David Goggins](https://en.wikipedia.org/wiki/David_Goggins).
 
+### Daily Inspirational Quotes
+A scheduled cron job that posts inspirational quotes to a `#quote-of-the-day` channel if
+it exists. Possible by the [theysaidso](https://theysaidso.com/) API.
 
 ## Development Quickstart
 If you want to test out this bot in your own Discord server, here's how:
