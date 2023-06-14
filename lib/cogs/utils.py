@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 
 
-class CommandsCog(commands.GroupCog, group_name="utils"):
+class UtilsCog(commands.GroupCog, group_name="utils"):
     @app_commands.command()
     async def count(self, interaction: discord.Interaction):
         """Returns total number of text messages from author in a channel."""
