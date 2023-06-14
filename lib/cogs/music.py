@@ -19,14 +19,18 @@ class MusicCog(CommonCog):
         """Plays from a query or url (almost anything youtube_dl supports)"""
         async with ctx.typing():
             self.controller.update_ctx(ctx)
-            # TODO: this plays the next song in the queue and adds the url to next
-            # song in queue. intended behavior is url replaces index 0 and restarts
-            # the player
-            try:
-                self.controller.queue.insert(1, url)
-            except IndexError:
+
+            if self.controller.is_stopped:
                 self.controller.push(url)
-            self.controller.play()
+                self.controller.play()
+            else:
+                # TODO: adjust MusicController to handle this more cleanly / better
+                # skip the song first, so that the first song in the queue (the song
+                # that's current playing) gets removed from the queue, THEN insert our
+                # next song before the async player picks up the next song in the queue
+                self.controller.skip()
+                self.controller.insert(url)
+
             await self.controller.on_player_start()
 
     @commands.command()
@@ -189,6 +193,15 @@ class MusicController:
     def resume(self):
         """Resumes the current playing song."""
         self.ctx.voice_client.resume()
+
+    def insert(self, url: str):
+        """Insert a url into the first position of the queue, effectively making it the
+        next song to be played.
+        """
+        try:
+            self.queue.insert(0, url)
+        except IndexError:
+            self.push(url)
 
     def push(self, url: str):
         """Insert a url into the queue"""
