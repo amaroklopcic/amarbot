@@ -77,7 +77,8 @@ class UtilsCog(commands.GroupCog, group_name="utils"):
 
         success_text = (
             f"Successfully extracted {len(exported_messages)} messages "
-            f"from {len(text_channels)} channels!"
+            f"from {len(text_channels)} channels. Check your DMs!"
         )
 
-        await interaction.followup.send(success_text, file=discord.File(filename))
+        await interaction.followup.send(success_text)
+        await interaction.user.send(file=discord.File(filename))
