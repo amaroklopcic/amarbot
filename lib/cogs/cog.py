@@ -14,10 +14,6 @@ class CommonCog(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    # -vvv- helper methods -vvv-
-    async def sleep(self, duration: float):
-        await asyncio.sleep(duration)
-
     # -vvv- emoji reactions -vvv-
     async def acknowledge(self, ctx: commands.Context):
         """Adds `emoji_ack` to users issued command."""
