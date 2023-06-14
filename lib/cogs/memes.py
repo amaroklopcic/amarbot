@@ -1,6 +1,6 @@
+import asyncio
 import random
 
-import discord
 from discord.ext import commands
 
 from lib.cogs.cog import CommonCog
@@ -34,7 +34,7 @@ class MemeCog(CommonCog):
         ctx.voice_client.play(gun_sound)
 
         # sleep so user can hear gunshot before they go
-        await self.sleep(gun_sound.data["duration"])
+        await asyncio.sleep(gun_sound.data["duration"])
 
         chosen_one = random.choice(voice_channel.members)
         await chosen_one.edit(voice_channel=None)
@@ -64,13 +64,13 @@ class MemeCog(CommonCog):
         ctx.voice_client.play(machine_gun_sound)
 
         # initial wait so everyone can here the "CHK CHK"
-        await self.sleep(1)
+        await asyncio.sleep(1)
 
         targets = [member for member in voice_channel.members if not member.bot]
 
         # keep going until everyone has been kicked
         while targets:
-            await self.sleep(random.uniform(0.5, 1.5))
+            await asyncio.sleep(random.uniform(0.5, 1.5))
             user = random.choice(targets)
             await user.edit(voice_channel=None)
             targets.remove(user)
@@ -104,7 +104,7 @@ class MemeCog(CommonCog):
         all_voice_channels = voice_channel.guild.voice_channels
 
         # sleep so users can hear grenade and "OH FUDGE"
-        await self.sleep(3)
+        await asyncio.sleep(3)
 
         # avoid kicking them into a channel they dont have access to
         for member in voice_channel.members:
