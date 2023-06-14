@@ -5,8 +5,17 @@ from discord import ChannelType, app_commands
 from discord.ext import commands
 
 
+def is_admin(interaction: discord.Interaction):
+    return interaction.user.guild_permissions.administrator
+
+
+def is_owner(interaction: discord.Interaction):
+    return interaction.user.id == interaction.guild.owner_id
+
+
 class UtilsCog(commands.GroupCog, group_name="utils"):
     @app_commands.command()
+    @app_commands.check(is_admin)
     async def count(self, interaction: discord.Interaction):
         """Returns total number of text messages from author in a channel."""
         await interaction.response.defer()
@@ -21,6 +30,7 @@ class UtilsCog(commands.GroupCog, group_name="utils"):
         )
 
     @app_commands.command()
+    @app_commands.check(is_admin)
     async def channel_count(self, interaction: discord.Interaction):
         """Returns total number of text messages in a channel."""
         await interaction.response.defer()
@@ -33,14 +43,9 @@ class UtilsCog(commands.GroupCog, group_name="utils"):
         )
 
     @app_commands.command()
+    @app_commands.check(is_owner)
     async def export_guild(self, interaction: discord.Interaction):
         """Returns all the messages from all the channels in a Discord guild."""
-        if interaction.user.id != interaction.guild.owner_id:
-            await interaction.response.send_message(
-                "You must be the owner to use this command!"
-            )
-            return
-
         await interaction.response.defer()
 
         text_channels = []
