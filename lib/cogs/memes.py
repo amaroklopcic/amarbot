@@ -125,7 +125,6 @@ class MemeCog(CommonCog):
 
     # -vvv- commands suggested by Tunu -vvv-
     @commands.command()
-    @commands.has_permissions(kick_members=True)
     async def minecraft(self, ctx: commands.Context):
         """Plays the "Mining - Minecraft Parody of Drowning" music video."""
 
@@ -145,7 +144,6 @@ class MemeCog(CommonCog):
 
     # -vvv- commands suggested by Sandi -vvv-
     @commands.command()
-    @commands.has_permissions(kick_members=True)
     async def smd(self, ctx: commands.Context):
         """Plays the grapefruit technique video. I'm sorry."""
 
