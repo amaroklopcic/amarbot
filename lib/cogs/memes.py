@@ -12,6 +12,7 @@ class MemeCog(CommonCog):
 
     # -vvv- commands suggested by me (very, very annoying) -vvv-
     @commands.command()
+    @commands.has_permissions(kick_members=True)
     async def roulette(self, ctx: commands.Context):
         """Plays a gunshot sounds and kicks a random user from the voice channel."""
 
@@ -42,6 +43,7 @@ class MemeCog(CommonCog):
         await self.disconnect_vc(ctx)
 
     @commands.command()
+    @commands.has_permissions(kick_members=True)
     async def driveby(self, ctx: commands.Context):
         """Plays machine gun sound while kicking multiple people from the voice channel."""
 
@@ -80,6 +82,7 @@ class MemeCog(CommonCog):
         await self.disconnect_vc(ctx)
 
     @commands.command()
+    @commands.has_permissions(kick_members=True)
     async def grenade(self, ctx: commands.Context):
         """Plays grenade sound while everyone is scattered across various channels."""
 
@@ -122,6 +125,7 @@ class MemeCog(CommonCog):
 
     # -vvv- commands suggested by Tunu -vvv-
     @commands.command()
+    @commands.has_permissions(kick_members=True)
     async def minecraft(self, ctx: commands.Context):
         """Plays the "Mining - Minecraft Parody of Drowning" music video."""
 
@@ -141,6 +145,7 @@ class MemeCog(CommonCog):
 
     # -vvv- commands suggested by Sandi -vvv-
     @commands.command()
+    @commands.has_permissions(kick_members=True)
     async def smd(self, ctx: commands.Context):
         """Plays the grapefruit technique video. I'm sorry."""
 
