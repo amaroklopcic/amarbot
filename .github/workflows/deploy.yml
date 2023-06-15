@@ -54,7 +54,7 @@ jobs:
             --boot-disk-device-name=amarbot \
             --container-image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/amarbot/amarbot:latest \
             --container-restart-policy=always \
-            --container-env=AMARBOT_PUBLIC_KEY=${{ secrets.AMARBOT_PUBLIC_KEY }},AMARBOT_TOKEN=${{ secrets.AMARBOT_TOKEN }},THEYSAIDSO_API_TOKEN=${{ secrets.THEYSAIDSO_TOKEN }} \
+            --container-env=AMARBOT_PUBLIC_KEY=${{ secrets.AMARBOT_PUBLIC_KEY }},AMARBOT_TOKEN=${{ secrets.AMARBOT_TOKEN }},THEYSAIDSO_API_TOKEN=${{ secrets.THEYSAIDSO_TOKEN }},FIREBASE_SERVICE_ACCOUNT=${{ secrets.FIREBASE_SERVICE_ACCOUNT }} \
             --no-shielded-secure-boot \
             --shielded-vtpm \
             --shielded-integrity-monitoring \
