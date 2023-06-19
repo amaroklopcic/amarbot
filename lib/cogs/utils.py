@@ -1,3 +1,4 @@
+import os
 import json
 
 import discord
@@ -70,7 +71,12 @@ class UtilsCog(commands.GroupCog, group_name="utils"):
                     }
                 )
 
-        filename = f"exports/{interaction.guild.name}-export.json"
+        # make sure path exists
+        exports_dir = f"{os.getcwd()}/exports"
+        if not os.path.exists(exports_dir):
+            os.makedirs(exports_dir)
+
+        filename = f"exports/{interaction.guild.id}-export.json"
         file = open(
             file=filename,
             mode="w",
