@@ -10,6 +10,7 @@ from lib.cogs.ack import Acknowledge
 from lib.cogs.memes import MemeCog
 from lib.cogs.music import MusicCog
 from lib.cogs.quotes import Quotes
+from lib.cogs.reminders import RemindersCog
 from lib.cogs.sync import SyncCog
 from lib.cogs.utils import UtilsCog
 
@@ -36,6 +37,7 @@ async def on_ready():
 async def main():
     async with bot:
         await bot.add_cog(Acknowledge(bot))
+        await bot.add_cog(RemindersCog(bot))
         await bot.add_cog(MusicCog(bot))
         await bot.add_cog(MemeCog(bot))
         await bot.add_cog(Quotes(bot))
