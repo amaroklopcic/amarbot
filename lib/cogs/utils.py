@@ -76,7 +76,7 @@ class UtilsCog(commands.GroupCog, group_name="utils"):
         if not os.path.exists(exports_dir):
             os.makedirs(exports_dir)
 
-        filename = f"exports/{interaction.guild.name}-export.json"
+        filename = f"exports/{interaction.guild.id}-export.json"
         file = open(
             file=filename,
             mode="w",
