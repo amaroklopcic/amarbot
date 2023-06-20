@@ -1,4 +1,5 @@
 import os
+from datetime import timezone
 
 import aiocron
 import aiohttp
@@ -22,7 +23,7 @@ class Quotes(commands.Cog):
         self.base_url = "https://quotes.rest"
         self.api_token = os.environ.get("THEYSAIDSO_API_TOKEN")
         self.qod_cron = aiocron.crontab(
-            "30 12 * * *", func=self.qod, loop=self.bot.loop
+            "0 12 * * *", func=self.qod, loop=self.bot.loop, tz=timezone.utc
         )
 
     async def make_request(self, url: str, method: str = "GET", **kwargs):
