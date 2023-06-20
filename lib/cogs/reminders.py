@@ -119,6 +119,7 @@ class RemindersCog(CommonCog):
 
     @commands.command()
     async def remind(self, ctx: commands.Context, who: str, *, when: str):
+        """Add a reminder for later. Example usage: `remind me in 1 week`"""
         target_member_id = None
         if who == "me":
             target_member_id = ctx.author.id
