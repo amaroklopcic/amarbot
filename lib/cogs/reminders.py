@@ -30,7 +30,6 @@ class Reminder:
 class RemindersCog(CommonCog):
     """Commands related to reminders."""
 
-    # TODO: add reminders command to view current reminders
     # TODO: add command to remove reminders
 
     def __init__(self, bot: commands.Bot) -> None:
@@ -142,6 +141,40 @@ class RemindersCog(CommonCog):
         )
         self.schedule_reminder(reminder)
 
-        # TODO: make the delta string nicer (e.g. "I'll remind you in 1 day", or
-        # "I'll remind you in 2 hours", or "... in 15 days, 6 hours, and 15 minutes")
-        await ctx.send(f"Gotcha! I'll remind you in {delta}.")
+        async with ctx.typing():
+            # TODO: make the delta string nicer (e.g. "I'll remind you in 1 day", or
+            # "I'll remind you in 2 hours", or "... in 15 days, 6 hours, and 15 minutes")
+            await ctx.send(f"Gotcha! I'll remind you in {delta}.")
+
+    @commands.command()
+    async def reminders(self, ctx: commands.Context):
+        """Shows current reminders for this guild, ordered by upcoming reminders first."""
+        target_member_id = ctx.author.id
+
+        db = get_firestore()
+        docs = (
+            await db.collection("reminders")
+            .where("user_id", "==", target_member_id)
+            .order_by("dt")
+            .get()
+        )
+
+        reminders = []
+        for doc in docs:
+            data = doc.to_dict()
+            channel = await ctx.guild.fetch_channel(data["channel_id"])
+            message = await channel.fetch_message(data["message_id"])
+            reminders.append(
+                {"jump_url": message.jump_url, "channel_name": channel.name, **data}
+            )
+
+        if len(reminders) == 0:
+            await ctx.send("You don't have reminders.")
+            return
+
+        list_str = "Here are your current reminders:\n"
+        for index, reminder in enumerate(reminders):
+            list_str += f"> {index + 1}. {reminder['jump_url']}\n"
+
+        async with ctx.typing():
+            await ctx.send(list_str.strip())
