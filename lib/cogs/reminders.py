@@ -73,7 +73,7 @@ class RemindersCog(CommonCog):
                 data["channel_id"],
                 data["message_id"],
                 data["user_id"],
-                data["timestamp"],
+                data["dt"],
             )
 
             self.schedule_reminder(reminder)
@@ -175,6 +175,55 @@ class RemindersCog(CommonCog):
         list_str = "Here are your current reminders:\n"
         for index, reminder in enumerate(reminders):
             list_str += f"> {index + 1}. {reminder['jump_url']}\n"
+
+        async with ctx.typing():
+            await ctx.send(list_str.strip())
+
+    @commands.command()
+    async def delete_reminder(self, ctx: commands.Context, reminder_index: int):
+        """Deletes a reminder by using the reminder index (run `reminders` first to get
+        the reminder index).
+        """
+        target_member_id = ctx.author.id
+
+        db = get_firestore()
+        docs = (
+            await db.collection("reminders")
+            .where("user_id", "==", target_member_id)
+            .order_by("dt")
+            .get()
+        )
+
+        if len(docs) == 0:
+            await ctx.send("You don't have any reminders.")
+            return
+
+        try:
+            await docs[reminder_index - 1].reference.delete()
+        except Exception as e:
+            print(f"Caught exception when trying to delete reminder:\n{e}")
+            await ctx.send(f"Couldn't delete reminder at index {reminder_index}.")
+            return
+
+        reminders = []
+        for index, doc in enumerate(docs):
+            if index + 1 == reminder_index:
+                continue
+            data = doc.to_dict()
+            channel = await ctx.guild.fetch_channel(data["channel_id"])
+            message = await channel.fetch_message(data["message_id"])
+            reminders.append(
+                {"jump_url": message.jump_url, "channel_name": channel.name, **data}
+            )
+
+        list_str = (
+            f"Successfully deleted reminder #{reminder_index}! "
+            "Here are your current reminders:\n"
+        )
+        for index, reminder in enumerate(reminders):
+            list_str += f"> {index + 1}. {reminder['jump_url']}\n"
+
+        await self.sync_reminders()
 
         async with ctx.typing():
             await ctx.send(list_str.strip())
