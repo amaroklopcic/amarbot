@@ -30,8 +30,6 @@ class Reminder:
 class RemindersCog(CommonCog):
     """Commands related to reminders."""
 
-    # TODO: add command to remove reminders
-
     def __init__(self, bot: commands.Bot) -> None:
         super().__init__(bot)
         self.loop = self.bot.loop
