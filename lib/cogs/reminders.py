@@ -7,6 +7,7 @@ from discord.ext import commands
 
 from lib.cogs.cog import CommonCog
 from lib.firebase import get_firestore
+from lib.logging import get_logger
 
 
 class Reminder:
@@ -32,6 +33,10 @@ class RemindersCog(CommonCog):
 
     def __init__(self, bot: commands.Bot) -> None:
         super().__init__(bot)
+
+        self.logger = get_logger(__name__)
+        self.logger.info("Initializing RemindersCog...")
+
         self.loop = self.bot.loop
         self.reminder_tasks: List[asyncio.Task] = []
 
@@ -50,18 +55,18 @@ class RemindersCog(CommonCog):
         schedules them. Any reminder tasks that are currently scheduled are cancelled,
         repulled from Firestore, and rescheduled.
         """
-        print("syncing reminders...")
-        print("clearing existing reminders...")
+        self.logger.debug("syncing reminders...")
+        self.logger.debug("clearing existing reminders...")
         for reminder in self.reminder_tasks:
             reminder.cancel()
 
         self.reminder_tasks = []
 
-        print("fetching reminders from the db...")
+        self.logger.debug("fetching reminders from the db...")
         db = get_firestore()
         reminder_docs = await db.collection("reminders").get()
 
-        print(f"resyncing {len(reminder_docs)} reminders...")
+        self.logger.debug(f"resyncing {len(reminder_docs)} reminders...")
         for reminder_doc in reminder_docs:
             doc_id = reminder_doc.id
             data = reminder_doc.to_dict()
@@ -79,7 +84,9 @@ class RemindersCog(CommonCog):
     async def run_reminder(self, reminder: Reminder):
         sleep_time = (reminder.dt - datetime.utcnow()).total_seconds()
         if sleep_time <= 0:
-            print("attempted to run reminder that is in the past, skipping")
+            self.logger.warning(
+                "attempted to run reminder that is in the past, skipping"
+            )
             return
         await asyncio.sleep(sleep_time)
 
@@ -200,7 +207,7 @@ class RemindersCog(CommonCog):
         try:
             await docs[reminder_index - 1].reference.delete()
         except Exception as e:
-            print(f"Caught exception when trying to delete reminder:\n{e}")
+            self.logger.error(f"Caught exception when trying to delete reminder:\n{e}")
             await ctx.send(f"Couldn't delete reminder at index {reminder_index}.")
             return
 
