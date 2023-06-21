@@ -7,15 +7,20 @@ __pycache__/
 
 # Environments
 .env
+.env-prod
 .venv*
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+service_account.json
 
 # Log files
 logs/
 *.log
+
+# Notebooks
+*.ipynb
 
 exports/
