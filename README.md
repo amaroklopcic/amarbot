@@ -43,6 +43,13 @@ music video.
 - `goggins` --> Drops a motivational quote from
 [David Goggins](https://en.wikipedia.org/wiki/David_Goggins).
 
+### Reminder Commands
+Requires a Firebase environment to work since this uses Firestore under the hood.
+- `remind {who} {when}` --> Remind you or another user some time later in the future.
+- `reminders` --> Shows you a list with links to your upcoming reminders.
+- `delete_reminder {reminder_index}` --> Delete an upcoming reminder by the index. Use
+`reminders` command first to get the `reminder_index`.
+
 ### Daily Inspirational Quotes
 A scheduled cron job that posts inspirational quotes to a `#quote-of-the-day` channel if
 it exists. Possible by the [theysaidso](https://theysaidso.com/) API.
