@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import os
 
@@ -14,27 +15,35 @@ from lib.cogs.reminders import RemindersCog
 from lib.cogs.sync import SyncCog
 from lib.cogs.utils import UtilsCog
 
-COMMAND_PREFIX = "."
 
-intents = discord.Intents.default()
-intents.message_content = True
-
-bot = commands.Bot(
-    command_prefix=COMMAND_PREFIX,
-    intents=intents,
-    activity=discord.Activity(
-        type=discord.ActivityType.listening, name=f"{COMMAND_PREFIX}help"
-    ),
-)
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--command_prefix",
+        type=str,
+        help="command prefix character to use for commands executed on the Discord client",
+        default="!",
+    )
+    return parser.parse_args()
 
 
-@bot.event
-async def on_ready():
-    print(f"Logged in as {bot.user.name} (ID: {bot.user.id})")
-    print("--------------------")
+async def main(command_prefix: str):
+    intents = discord.Intents.default()
+    intents.message_content = True
 
+    bot = commands.Bot(
+        command_prefix=command_prefix,
+        intents=intents,
+        activity=discord.Activity(
+            type=discord.ActivityType.listening, name=f"{command_prefix}help"
+        ),
+    )
 
-async def main():
+    @bot.event
+    async def on_ready():
+        print(f"Logged in as {bot.user.name} (ID: {bot.user.id})")
+        print("--------------------")
+
     async with bot:
         await bot.add_cog(Acknowledge(bot))
         await bot.add_cog(RemindersCog(bot))
@@ -43,10 +52,13 @@ async def main():
         await bot.add_cog(Quotes(bot))
         await bot.add_cog(SyncCog(bot))
         await bot.add_cog(UtilsCog(bot))
+
         await bot.start(os.environ.get("AMARBOT_TOKEN"))
 
 
 if __name__ == "__main__":
+    args = parse_args()
+
     load_dotenv()
 
     setup_logging(
@@ -56,4 +68,4 @@ if __name__ == "__main__":
         root=False,
     )
 
-    asyncio.run(main(), debug=True)
+    asyncio.run(main(command_prefix=args.command_prefix), debug=True)
