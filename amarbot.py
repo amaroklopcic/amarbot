@@ -14,6 +14,7 @@ from lib.cogs.quotes import Quotes
 from lib.cogs.reminders import RemindersCog
 from lib.cogs.sync import SyncCog
 from lib.cogs.utils import UtilsCog
+from lib.logging import get_logger, setup_discord_logging
 
 
 def parse_args():
@@ -72,6 +73,11 @@ async def main(
     no_reminders: bool = False,
     no_utils: bool = False,
 ):
+    logger = get_logger("amarbot")
+    logger.info("Starting AmarBot...")
+
+    setup_discord_logging()
+
     intents = discord.Intents.default()
     intents.message_content = True
 
@@ -85,8 +91,7 @@ async def main(
 
     @bot.event
     async def on_ready():
-        print(f"Logged in as {bot.user.name} (ID: {bot.user.id})")
-        print("--------------------")
+        logger.info(f"Logged in as {bot.user.name} (ID: {bot.user.id})")
 
     async with bot:
         await bot.add_cog(SyncCog(bot))
@@ -111,13 +116,6 @@ if __name__ == "__main__":
     args = parse_args()
 
     load_dotenv()
-
-    setup_logging(
-        handler=MISSING,
-        formatter=MISSING,
-        level=MISSING,
-        root=False,
-    )
 
     asyncio.run(
         main(
