@@ -24,10 +24,54 @@ def parse_args():
         help="command prefix character to use for commands executed on the Discord client",
         default="!",
     )
+    parser.add_argument(
+        "--no_ack",
+        action="store_true",
+        help="disable emoji acknowledgments (bot responding to commands with emojis)",
+        default=False,
+    )
+    parser.add_argument(
+        "--no_memes",
+        action="store_true",
+        help="disable all meme-related commands",
+        default=False,
+    )
+    parser.add_argument(
+        "--no_music",
+        action="store_true",
+        help="disable all music-related commands",
+        default=False,
+    )
+    parser.add_argument(
+        "--no_qod",
+        action="store_true",
+        help="disable quote of the day messages",
+        default=False,
+    )
+    parser.add_argument(
+        "--no_reminders",
+        action="store_true",
+        help="disable reminders-related commands",
+        default=False,
+    )
+    parser.add_argument(
+        "--no_utils",
+        action="store_true",
+        help="disable utils-related commands",
+        default=False,
+    )
     return parser.parse_args()
 
 
-async def main(command_prefix: str):
+async def main(
+    command_prefix: str,
+    no_ack: bool = False,
+    no_memes: bool = False,
+    no_music: bool = False,
+    no_qod: bool = False,
+    no_reminders: bool = False,
+    no_utils: bool = False,
+):
     intents = discord.Intents.default()
     intents.message_content = True
 
@@ -45,13 +89,20 @@ async def main(command_prefix: str):
         print("--------------------")
 
     async with bot:
-        await bot.add_cog(Acknowledge(bot))
-        await bot.add_cog(RemindersCog(bot))
-        await bot.add_cog(MusicCog(bot))
-        await bot.add_cog(MemeCog(bot))
-        await bot.add_cog(Quotes(bot))
         await bot.add_cog(SyncCog(bot))
-        await bot.add_cog(UtilsCog(bot))
+
+        if not no_ack:
+            await bot.add_cog(Acknowledge(bot))
+        if not no_memes:
+            await bot.add_cog(MemeCog(bot))
+        if not no_music:
+            await bot.add_cog(MusicCog(bot))
+        if not no_qod:
+            await bot.add_cog(Quotes(bot))
+        if not no_reminders:
+            await bot.add_cog(RemindersCog(bot))
+        if not no_utils:
+            await bot.add_cog(UtilsCog(bot))
 
         await bot.start(os.environ.get("AMARBOT_TOKEN"))
 
@@ -68,4 +119,15 @@ if __name__ == "__main__":
         root=False,
     )
 
-    asyncio.run(main(command_prefix=args.command_prefix), debug=True)
+    asyncio.run(
+        main(
+            command_prefix=args.command_prefix,
+            no_ack=args.no_ack,
+            no_memes=args.no_memes,
+            no_music=args.no_music,
+            no_qod=args.no_qod,
+            no_reminders=args.no_reminders,
+            no_utils=args.no_utils,
+        ),
+        debug=True,
+    )
