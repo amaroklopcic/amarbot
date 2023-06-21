@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 import dateparser
@@ -47,6 +47,7 @@ class RemindersCog(CommonCog):
 
     def schedule_reminder(self, reminder: Reminder):
         """Schedules a new reminder to be run."""
+        self.logger.debug(f"scheduling new reminder to run at {reminder.dt}...")
         task = self.loop.create_task(self.run_reminder(reminder))
         self.reminder_tasks.append(task)
 
@@ -82,12 +83,16 @@ class RemindersCog(CommonCog):
             self.schedule_reminder(reminder)
 
     async def run_reminder(self, reminder: Reminder):
-        sleep_time = (reminder.dt - datetime.utcnow()).total_seconds()
+        sleep_time = (reminder.dt - datetime.now(timezone.utc)).total_seconds()
         if sleep_time <= 0:
             self.logger.warning(
-                "attempted to run reminder that is in the past, skipping"
+                "Attempted to run a reminder that is in the past, skipping! This is "
+                "an indicator that reminders are not getting removed from the db after "
+                "they've been ran."
             )
             return
+        else:
+            self.logger.debug(f"running reminder after {sleep_time} seconds...")
         await asyncio.sleep(sleep_time)
 
         channel = await self.bot.fetch_channel(reminder.channel_id)
