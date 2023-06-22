@@ -4,6 +4,7 @@ from typing import List
 
 import dateparser
 from discord.ext import commands
+from google.cloud.firestore import FieldFilter
 
 from lib.cogs.cog import CommonCog
 from lib.firebase import get_firestore
@@ -84,6 +85,8 @@ class RemindersCog(CommonCog):
 
     async def run_reminder(self, reminder: Reminder):
         sleep_time = (reminder.dt - datetime.now(timezone.utc)).total_seconds()
+        self.logger.debug(f"running reminder after {sleep_time} seconds...")
+
         if sleep_time <= 0:
             self.logger.warning(
                 "Attempted to run a reminder that is in the past, skipping! This is "
@@ -91,8 +94,7 @@ class RemindersCog(CommonCog):
                 "they've been ran."
             )
             return
-        else:
-            self.logger.debug(f"running reminder after {sleep_time} seconds...")
+
         await asyncio.sleep(sleep_time)
 
         channel = await self.bot.fetch_channel(reminder.channel_id)
@@ -165,7 +167,7 @@ class RemindersCog(CommonCog):
         db = get_firestore()
         docs = (
             await db.collection("reminders")
-            .where("user_id", "==", target_member_id)
+            .where(filter=FieldFilter("user_id", "==", target_member_id))
             .order_by("dt")
             .get()
         )
