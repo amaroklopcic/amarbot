@@ -22,9 +22,9 @@ want to use this bot, you'll have to host it yourself.
 - `volume {1-100}` --> Changes the music player's volume.
 
 ### Utility Commands
-- `utils count` --> Returns total number of text messages from author in a channel.
-- `utils channel_count` --> Returns total number of text messages in a channel.
-- `utils guild_export` --> Returns all the messages from all the channels in a Discord 
+- `/utils count` --> Returns total number of text messages from author in a channel.
+- `/utils channel_count` --> Returns total number of text messages in a channel.
+- `/utils guild_export` --> Returns all the messages from all the channels in a Discord 
 guild, as a JSON file in your DMs. For owners only.
 
 ### Fun / Meme Commands
@@ -42,6 +42,14 @@ music video.
 - `smd` --> Plays the grapefruit technique video. I'm sorry.
 - `goggins` --> Drops a motivational quote from
 [David Goggins](https://en.wikipedia.org/wiki/David_Goggins).
+
+### Reminder Commands
+Requires a Firebase environment to work since this uses Firestore under the hood.
+- `/reminders add {who} {content} {when}` --> Remind you or another user some time later
+in the future.
+- `/reminders list` --> Shows you a list with links to your upcoming reminders.
+- `/reminders delete {reminder_index}` --> Delete an upcoming reminder by the index. Use
+`/reminders list` command first to get the `reminder_index`.
 
 ### Daily Inspirational Quotes
 A scheduled cron job that posts inspirational quotes to a `#quote-of-the-day` channel if
