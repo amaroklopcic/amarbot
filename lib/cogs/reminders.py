@@ -184,10 +184,6 @@ class RemindersCog(commands.GroupCog, group_name="reminders"):
                     f"{reminder.content}"
                 )
             else:
-                self.logger.debug(
-                    (type(reminder.target_user.id), type(reminder.user.id))
-                )
-                self.logger.debug((reminder.target_user.id, reminder.user.id))
                 message = await channel.send(
                     f"Hey, <@{reminder.target_user.id}>, <@{reminder.user.id}> is "
                     f"reminding you to: *{reminder.content}*"
