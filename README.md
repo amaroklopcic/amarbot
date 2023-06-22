@@ -45,10 +45,11 @@ music video.
 
 ### Reminder Commands
 Requires a Firebase environment to work since this uses Firestore under the hood.
-- `remind {who} {when}` --> Remind you or another user some time later in the future.
-- `reminders` --> Shows you a list with links to your upcoming reminders.
-- `delete_reminder {reminder_index}` --> Delete an upcoming reminder by the index. Use
-`reminders` command first to get the `reminder_index`.
+- `/reminders add {who} {content} {when}` --> Remind you or another user some time later
+in the future.
+- `/reminders list` --> Shows you a list with links to your upcoming reminders.
+- `/reminders delete {reminder_index}` --> Delete an upcoming reminder by the index. Use
+`/reminders list` command first to get the `reminder_index`.
 
 ### Daily Inspirational Quotes
 A scheduled cron job that posts inspirational quotes to a `#quote-of-the-day` channel if
