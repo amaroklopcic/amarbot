@@ -43,7 +43,7 @@ jobs:
           --project=amaroklopcic-com \
           --zone=us-central1-a \
           --machine-type=e2-micro \
-          --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
+          --network-interface=network-tier=PREMIUM,subnet=default \
           --maintenance-policy=MIGRATE \
           --provisioning-model=STANDARD \
           --service-account=amarbot-vm@amaroklopcic-com.iam.gserviceaccount.com \
