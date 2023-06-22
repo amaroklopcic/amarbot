@@ -84,7 +84,9 @@ class RemindersCog(CommonCog):
             self.schedule_reminder(reminder)
 
     async def run_reminder(self, reminder: Reminder):
-        sleep_time = (reminder.dt - datetime.now(timezone.utc)).total_seconds()
+        sleep_time = (
+            reminder.dt.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)
+        ).total_seconds()
         self.logger.debug(f"running reminder after {sleep_time} seconds...")
 
         if sleep_time <= 0:
