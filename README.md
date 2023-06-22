@@ -22,9 +22,9 @@ want to use this bot, you'll have to host it yourself.
 - `volume {1-100}` --> Changes the music player's volume.
 
 ### Utility Commands
-- `utils count` --> Returns total number of text messages from author in a channel.
-- `utils channel_count` --> Returns total number of text messages in a channel.
-- `utils guild_export` --> Returns all the messages from all the channels in a Discord 
+- `/utils count` --> Returns total number of text messages from author in a channel.
+- `/utils channel_count` --> Returns total number of text messages in a channel.
+- `/utils guild_export` --> Returns all the messages from all the channels in a Discord 
 guild, as a JSON file in your DMs. For owners only.
 
 ### Fun / Meme Commands
