@@ -16,6 +16,14 @@ def is_owner(interaction: discord.Interaction):
 
 class UtilsCog(commands.GroupCog, group_name="utils"):
     @app_commands.command()
+    @app_commands.check(is_owner)
+    async def exit(self, interaction: discord.Interaction):
+        """Command which forcefully kills the bot."""
+        # NOTE: only actually restarts if running in a container with a retart policy
+        await interaction.response.send_message("Restarting!")
+        exit(0)
+
+    @app_commands.command()
     @app_commands.check(is_admin)
     async def count(self, interaction: discord.Interaction):
         """Returns total number of text messages from author in a channel."""
