@@ -4,11 +4,21 @@ import random
 from discord.ext import commands
 
 from lib.cogs.cog import CommonCog
+from lib.logging import get_logger
 from lib.ytdl import YTDLSource
 
 
 class MemeCog(CommonCog):
     """Commands suggested by my friends/community just for fun."""
+
+    def __init__(self, bot: commands.Bot) -> None:
+        super().__init__(bot)
+        self.logger = get_logger(__name__)
+        self.logger.debug("Initializing MemeCog...")
+
+    def _on_song_finish(self, error):
+        if error:
+            self.logger.error(f"Player error:\n{error}")
 
     # -vvv- commands suggested by me (very, very annoying) -vvv-
     @commands.command()
@@ -136,8 +146,7 @@ class MemeCog(CommonCog):
             url, loop=self.bot.loop, stream=True
         )
         ctx.voice_client.play(
-            minecraft_meme_music,
-            after=lambda e: print(f"Player error: {e}") if e else None,
+            minecraft_meme_music, after=lambda e: self._on_song_finish(e)
         )
 
         await ctx.send("NOW PLAYING: TUNUS FAVORITE SONG")
@@ -154,9 +163,7 @@ class MemeCog(CommonCog):
         grapefruit_video = await YTDLSource.from_url(
             url, loop=self.bot.loop, stream=True
         )
-        ctx.voice_client.play(
-            grapefruit_video, after=lambda e: print(f"Player error: {e}") if e else None
-        )
+        ctx.voice_client.play(grapefruit_video, after=lambda e: self._on_song_finish(e))
 
         await ctx.send("NOW PLAYING: SANDIS FAVORITE TECHNIQUE")
 
