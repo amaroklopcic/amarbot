@@ -9,7 +9,7 @@ from discord.ext import commands
 from lib.logging import get_logger
 
 
-class Quotes(commands.Cog):
+class QuotesCog(commands.Cog):
     """Commands related to quotes from famous people. Uses the "They Said So" API.
 
     Currently only features a cronjob that runs at 7am every day (CST), which fetches

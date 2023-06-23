@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from lib.cogs.ack import Acknowledge
 from lib.cogs.memes import MemeCog
 from lib.cogs.music import MusicCog
-from lib.cogs.quotes import Quotes
+from lib.cogs.quotes import QuotesCog
 from lib.cogs.reminders import RemindersCog
 from lib.cogs.sync import SyncCog
 from lib.cogs.utils import UtilsCog
@@ -102,7 +102,7 @@ async def main(
         if not no_music:
             await bot.add_cog(MusicCog(bot))
         if not no_qod:
-            await bot.add_cog(Quotes(bot))
+            await bot.add_cog(QuotesCog(bot))
         if not no_reminders:
             await bot.add_cog(RemindersCog(bot))
         if not no_utils:
