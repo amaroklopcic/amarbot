@@ -5,7 +5,7 @@ from discord.ext import commands
 from lib.cogs.cog import CommonCog
 
 
-class Acknowledge(CommonCog):
+class AcknowledgeCog(CommonCog):
     """Attaches event listeners that react to commands"""
 
     developer_role_id = "385543611191787530"

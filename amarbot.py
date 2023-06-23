@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from lib.cogs.ack import Acknowledge
+from lib.cogs.ack import AcknowledgeCog
 from lib.cogs.memes import MemeCog
 from lib.cogs.music import MusicCog
 from lib.cogs.quotes import QuotesCog
@@ -96,7 +96,7 @@ async def main(
         await bot.add_cog(SyncCog(bot))
 
         if not no_ack:
-            await bot.add_cog(Acknowledge(bot))
+            await bot.add_cog(AcknowledgeCog(bot))
         if not no_memes:
             await bot.add_cog(MemeCog(bot))
         if not no_music:
