@@ -1,17 +1,16 @@
-name: Deploy
+name: build and deploy
 
 on:
   release:
     types: [created]
 
 jobs:
-  build_push_deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      # TODO: add multiple tags with versions so we can later rollback if needed
       - name: Build Docker Image
         run: |-
           docker build . \
@@ -32,6 +31,22 @@ jobs:
 
       - name: Push build to GCP Artifact Registry
         run: docker push us-central1-docker.pkg.dev/amaroklopcic-com/amarbot/amarbot:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      # TODO: switch to Workload Identity Federation authentication
+      - name: Setup GCP auth
+        uses: google-github-actions/auth@v1.1.1
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v1.1.1
+
+      - name: Configure Docker Client of gcloud
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
 
       # || true so the build doesn't fail if amarbot VM doesnt exist
       - name: Stop & deleted amarbot instance
