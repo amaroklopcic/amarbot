@@ -11,6 +11,9 @@ from lib.firebase import get_firestore
 from lib.logging import get_logger
 
 
+db = get_firestore()
+
+
 class Member:
     def __init__(self, id: int, name: str) -> None:
         self.id = id
@@ -72,10 +75,9 @@ class Reminder:
         """Update or create the document if it doesn't exist. Soft fail if we are in an
         environment where Firebase/Firestore don't exist or can't be reached.
         """
-        # TODO: move get_firestore to the top of document so we aren't creating new
-        # instances every time we update a doc
-        db = get_firestore()
-        # TODO: check if self._firestore_doc_id is set and update, else create the doc
+        if db is None:
+            return
+
         result = await db.collection("reminders").add(self.to_dict())
         self._firestore_doc_ref = result[1]
         return result[1]
@@ -88,7 +90,9 @@ class Reminder:
             # no firestore doc reference set, do nothing
             return
 
-        db = get_firestore()
+        if db is None:
+            return
+
         return await db.document("reminders", self._firestore_doc_ref.id).delete()
 
 
@@ -110,6 +114,12 @@ class RemindersCog(commands.GroupCog, group_name="reminders"):
         # fetch reminders
         self._sync_reminders_task = self.loop.create_task(self.sync_reminders())
 
+        if db is None:
+            self.logger.warning(
+                "Couldn't initialize Firestore database! All reminders will be "
+                "ephemeral and lost on application restart!"
+            )
+
     def schedule_reminder(self, reminder: Reminder):
         """Schedules a new reminder to be run."""
         self.logger.debug(f"scheduling new reminder to run at {reminder.dt}...")
@@ -121,6 +131,12 @@ class RemindersCog(commands.GroupCog, group_name="reminders"):
         schedules them. Any reminder tasks that are currently scheduled are cancelled,
         repulled from Firestore, and rescheduled.
         """
+        if db is None:
+            self.logger.warning(
+                "Firestore database not initialized, skipping reminders synchronization"
+            )
+            return
+
         try:
             self.logger.debug("waiting until bot is ready before synchronizing...")
             while True:
@@ -135,7 +151,6 @@ class RemindersCog(commands.GroupCog, group_name="reminders"):
             self.reminder_tasks = []
 
             self.logger.debug(f"pulling reminders for {len(self.bot.guilds)} guilds...")
-            db = get_firestore()
             reminders_count = 0
             for guild in self.bot.guilds:
                 reminders_snap_list = (
@@ -192,15 +207,9 @@ class RemindersCog(commands.GroupCog, group_name="reminders"):
             await reminder.delete()
 
             # remove the reminder from the reminder tasks
-            reminder_index = None
-            for index, reminder_task in enumerate(self.reminder_tasks):
-                if (
-                    reminder._firestore_doc_ref.id
-                    == reminder_task[0]._firestore_doc_ref.id
-                ):
-                    reminder_index = index
-                    break
-            self.reminder_tasks.pop(reminder_index)
+            self.reminder_tasks = [
+                rt for rt in self.reminder_tasks if reminder != rt[0]
+            ]
 
             self.logger.debug("Reminder successfully sent!")
         except asyncio.exceptions.CancelledError:
