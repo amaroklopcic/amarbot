@@ -6,8 +6,10 @@ import aiohttp
 from discord import ChannelType
 from discord.ext import commands
 
+from lib.logging import get_logger
 
-class Quotes(commands.Cog):
+
+class QuotesCog(commands.Cog):
     """Commands related to quotes from famous people. Uses the "They Said So" API.
 
     Currently only features a cronjob that runs at 7am every day (CST), which fetches
@@ -19,6 +21,10 @@ class Quotes(commands.Cog):
 
     def __init__(self, bot: commands.Bot) -> None:
         super().__init__()
+
+        self.logger = get_logger(__name__)
+        self.logger.debug("Initializing QuotesCog...")
+
         self.bot = bot
         self.base_url = "https://quotes.rest"
         self.api_token = os.environ.get("THEYSAIDSO_API_TOKEN")
@@ -50,17 +56,19 @@ class Quotes(commands.Cog):
         ) as e:
             status = getattr(e, "status", None)
             message = getattr(e, "message", None)
-            print(f"aiohttp exception for {full_url} [{status}]: {message}")
-            return None
+            self.logger.exception(
+                f"aiohttp exception occurred - {full_url} [{status}]: {message}"
+            )
+            raise
         except Exception as e:
-            print(f"Non-aiohttp exception occured: {getattr(e, '__dict__', {})}")
-            return None
+            self.logger.exception("Non-aiohttp exception occurred")
+            raise
 
     async def qod(self):
         """Check for a quote of the day channel and post a quote of the day in there
         if one exists.
         """
-        print("Posting quote of the day...")
+        self.logger.debug("Posting quote of the day...")
 
         # category = "all"
         category = "inspire"
@@ -68,13 +76,12 @@ class Quotes(commands.Cog):
 
         try:
             resp = await self.make_request(f"/qod.json?category={category}")
-            print(resp)
+            self.logger.debug(resp)
             author = resp["contents"]["quotes"][0]["author"]
             quote = resp["contents"]["quotes"][0]["quote"]
         except Exception as e:
-            print(e)
-            print(f"Failed to parse response for quote of the day")
-            return
+            self.logger.exception("Failed to parse response for quote of the day")
+            raise
 
         for guild in self.bot.guilds:
             for channel in guild.channels:

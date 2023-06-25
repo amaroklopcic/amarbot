@@ -1,76 +1,79 @@
 import asyncio
 import random
 
+from discord import Interaction, app_commands
 from discord.ext import commands
 
-from lib.cogs.cog import CommonCog
+from lib.common import join_users_vc
+from lib.logging import get_logger
+from lib.permissions import GuildPermissions
 from lib.ytdl import YTDLSource
 
 
-class MemeCog(CommonCog):
+class MemeCog(commands.GroupCog, group_name="memes"):
     """Commands suggested by my friends/community just for fun."""
 
+    def __init__(self, bot: commands.Bot) -> None:
+        super().__init__()
+        self.bot = bot
+        self.logger = get_logger(__name__)
+        self.logger.debug("Initializing MemeCog...")
+
+    def _on_song_finish(self, error):
+        if error:
+            self.logger.error(f"Player error:\n{error}")
+
     # -vvv- commands suggested by me (very, very annoying) -vvv-
-    @commands.command()
-    @commands.has_permissions(kick_members=True)
-    async def roulette(self, ctx: commands.Context):
+    @app_commands.command()
+    @app_commands.check(GuildPermissions.can_kick)
+    async def roulette(self, interaction: Interaction):
         """Plays a gunshot sounds and kicks a random user from the voice channel."""
 
-        # validate user is in voice channel
-        voice_channel = None
-        if ctx.author.voice:
-            voice_channel = ctx.author.voice.channel
-        else:
-            await self.react_reject(ctx)
+        voice_client = await join_users_vc(self.bot, interaction)
+
+        if not voice_client:
+            await interaction.response.send_message("Something went wrong :(")
             return
 
-        if len(voice_channel.members) < 1:
-            await self.react_reject(ctx)
-            return
+        await interaction.response.send_message("Someone's fate has been sealed!")
 
         gun_sound = YTDLSource.from_file("sounds/roulette.wav")
-
-        # connect to voice channel and play sound
-        await self.join_authors_vc(ctx)
-        ctx.voice_client.play(gun_sound)
+        voice_client.play(gun_sound)
 
         # sleep so user can hear gunshot before they go
         await asyncio.sleep(gun_sound.data["duration"])
 
-        chosen_one = random.choice(voice_channel.members)
+        targets = [member for member in voice_client.channel.members if not member.bot]
+        chosen_one = random.choice(targets)
         await chosen_one.edit(voice_channel=None)
 
-        await self.disconnect_vc(ctx)
+        await voice_client.disconnect()
 
-    @commands.command()
-    @commands.has_permissions(kick_members=True)
-    async def driveby(self, ctx: commands.Context):
+    @app_commands.command()
+    @app_commands.check(GuildPermissions.can_kick)
+    async def driveby(self, interaction: Interaction):
         """Plays machine gun sound while kicking multiple people from the voice channel."""
 
-        # validate user is in voice channel
-        voice_channel = None
-        if ctx.author.voice:
-            voice_channel = ctx.author.voice.channel
-        else:
-            await self.react_reject(ctx)
+        voice_client = await join_users_vc(self.bot, interaction)
+
+        if not voice_client:
+            await interaction.response.send_message("Something went wrong :(")
             return
 
-        if len(voice_channel.members) < 1:
-            await self.react_reject(ctx)
-            return
+        await interaction.response.send_message(
+            "**Yo this black car just pulled up...**"
+        )
 
-        # join voice_channel and play machine gun sound
-        machine_gun_sound = YTDLSource.from_file("sounds/machine_gun.wav")
-
-        await self.join_authors_vc(ctx)
-        ctx.voice_client.play(machine_gun_sound)
+        gun_sound = YTDLSource.from_file("sounds/machine_gun.wav")
+        voice_client.play(gun_sound)
 
         # initial wait so everyone can here the "CHK CHK"
         await asyncio.sleep(1)
 
-        targets = [member for member in voice_channel.members if not member.bot]
+        targets = [member for member in voice_client.channel.members if not member.bot]
 
         # keep going until everyone has been kicked
+        # TODO: refactor this. while loop will block until the entire 5 seconds is done
         while targets:
             await asyncio.sleep(random.uniform(0.5, 1.5))
             user = random.choice(targets)
@@ -79,38 +82,31 @@ class MemeCog(CommonCog):
             if len(targets) == 0:
                 break
 
-        await self.disconnect_vc(ctx)
+        await voice_client.disconnect()
 
-    @commands.command()
-    @commands.has_permissions(kick_members=True)
-    async def grenade(self, ctx: commands.Context):
+    @app_commands.command()
+    @app_commands.check(GuildPermissions.can_kick)
+    async def grenade(self, interaction: Interaction):
         """Plays grenade sound while everyone is scattered across various channels."""
 
-        # validate user is in voice channel
-        voice_channel = None
-        if ctx.author.voice:
-            voice_channel = ctx.author.voice.channel
-        else:
-            await self.react_reject(ctx)
+        voice_client = await join_users_vc(self.bot, interaction)
+
+        if not voice_client:
+            await interaction.response.send_message("Something went wrong :(")
             return
 
-        if len(voice_channel.members) < 1:
-            await self.react_reject(ctx)
-            return
+        await interaction.response.send_message("**GRENAAAADDEEE!!**")
 
-        # join voice_channel and play grenade sound
         grenade_sound = YTDLSource.from_file("sounds/grenade_oh_fudge.wav")
-
-        await self.join_authors_vc(ctx)
-        ctx.voice_client.play(grenade_sound)
-
-        all_voice_channels = voice_channel.guild.voice_channels
+        voice_client.play(grenade_sound)
 
         # sleep so users can hear grenade and "OH FUDGE"
         await asyncio.sleep(3)
 
+        all_voice_channels = interaction.guild.voice_channels
+
         # avoid kicking them into a channel they dont have access to
-        for member in voice_channel.members:
+        for member in voice_client.channel.members:
             if member.bot:
                 continue
 
@@ -121,48 +117,53 @@ class MemeCog(CommonCog):
 
             await member.edit(voice_channel=random.choice(available_channels))
 
-        await self.disconnect_vc(ctx)
+        await voice_client.disconnect()
 
     # -vvv- commands suggested by Tunu -vvv-
-    @commands.command()
-    async def minecraft(self, ctx: commands.Context):
+    @app_commands.command()
+    async def minecraft(self, interaction: Interaction):
         """Plays the "Mining - Minecraft Parody of Drowning" music video."""
 
-        await self.join_authors_vc(ctx)
+        voice_client = await join_users_vc(self.bot, interaction)
+
+        if not voice_client:
+            await interaction.response.send_message("Something went wrong :(")
+            return
+
+        await interaction.response.send_message("NOW PLAYING: TUNUS FAVORITE SONG")
 
         # join voice_channel and play minecraft music video
         url = "https://www.youtube.com/watch?v=kMlLz7stjwc"
         minecraft_meme_music = await YTDLSource.from_url(
             url, loop=self.bot.loop, stream=True
         )
-        ctx.voice_client.play(
-            minecraft_meme_music,
-            after=lambda e: print(f"Player error: {e}") if e else None,
-        )
-
-        await ctx.send("NOW PLAYING: TUNUS FAVORITE SONG")
+        voice_client.play(minecraft_meme_music, after=lambda e: self._on_song_finish(e))
 
     # -vvv- commands suggested by Sandi -vvv-
-    @commands.command()
-    async def smd(self, ctx: commands.Context):
+    @app_commands.command()
+    async def smd(self, interaction: Interaction):
         """Plays the grapefruit technique video. I'm sorry."""
 
-        await self.join_authors_vc(ctx)
+        voice_client = await join_users_vc(self.bot, interaction)
+
+        if not voice_client:
+            await interaction.response.send_message("Something went wrong :(")
+            return
+
+        await interaction.response.send_message(
+            "NOW PLAYING: SANDIS FAVORITE TECHNIQUE"
+        )
 
         # join voice_channel and play minecraft music video
         url = "https://www.youtube.com/watch?v=VmBMxMivJXQ&t=4s"
         grapefruit_video = await YTDLSource.from_url(
             url, loop=self.bot.loop, stream=True
         )
-        ctx.voice_client.play(
-            grapefruit_video, after=lambda e: print(f"Player error: {e}") if e else None
-        )
-
-        await ctx.send("NOW PLAYING: SANDIS FAVORITE TECHNIQUE")
+        voice_client.play(grapefruit_video, after=lambda e: self._on_song_finish(e))
 
     # -vvv- commands suggested by Aladin -vvv-
-    @commands.command()
-    async def goggins(self, ctx: commands.Context):
+    @app_commands.command()
+    async def goggins(self, interaction: Interaction):
         """Drops a motivational quote from David Goggins."""
 
         goggins_quotes = [
@@ -229,4 +230,6 @@ class MemeCog(CommonCog):
             "YOU DONT KNOW ME SON",
         ]
 
-        await ctx.send(f'> "{random.choice(goggins_quotes)}" - **David Goggins**')
+        await interaction.response.send_message(
+            f'> "{random.choice(goggins_quotes)}" - **David Goggins**'
+        )

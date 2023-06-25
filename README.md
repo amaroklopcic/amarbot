@@ -30,17 +30,17 @@ guild, as a JSON file in your DMs. For owners only.
 ### Fun / Meme Commands
 For obvious reasons, these commands are likely to be removed or disabled in a
 future release. Funny at first, but they get annoying after a while.
-- `roulette` --> Plays a gunshot sounds and kicks a random user from the voice
+- `/memes roulette` --> Plays a gunshot sounds and kicks a random user from the voice
 channel.
-- `driveby` --> Plays machine gun sound while kicking multiple people from the
+- `/memes driveby` --> Plays machine gun sound while kicking multiple people from the
 voice channel.
-- `grenade` --> Plays grenade sound while everyone connected to the current voice
+- `/memes grenade` --> Plays grenade sound while everyone connected to the current voice
 channel is scattered across various channels.
-- `minecraft` --> Plays the
+- `/memes minecraft` --> Plays the
 ["Mining - Minecraft Parody of Drowning"](https://www.youtube.com/watch?v=kMlLz7stjwc) 
 music video.
-- `smd` --> Plays the grapefruit technique video. I'm sorry.
-- `goggins` --> Drops a motivational quote from
+- `/memes smd` --> Plays the grapefruit technique video. I'm sorry.
+- `/memes goggins` --> Drops a motivational quote from
 [David Goggins](https://en.wikipedia.org/wiki/David_Goggins).
 
 ### Reminder Commands
