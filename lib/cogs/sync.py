@@ -4,10 +4,8 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Context, Greedy  # or a subclass of yours
 
-from lib.cogs.cog import CommonCog
 
-
-class SyncCog(CommonCog):
+class SyncCog(commands.Cog):
     @commands.command()
     @commands.guild_only()
     @commands.is_owner()

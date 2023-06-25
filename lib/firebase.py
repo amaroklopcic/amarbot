@@ -2,7 +2,12 @@ import os
 
 import firebase_admin
 from firebase_admin import firestore_async, storage
+from google.auth.exceptions import DefaultCredentialsError
 from google.cloud.firestore import AsyncClient
+
+from lib.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def _setup_adc():
@@ -28,7 +33,15 @@ def get_app() -> firebase_admin.App:
 
 
 def get_firestore(app: firebase_admin.App = None) -> AsyncClient:
-    return firestore_async.client(app or get_app())
+    try:
+        return firestore_async.client(app or get_app())
+    except DefaultCredentialsError:
+        logger.warning(
+            "Encountered DefaultCredentialsError when trying to fetch a Firestore "
+            "instance. Some features utilizing Firestore database might not work "
+            "correctly."
+        )
+        return None
 
 
 def get_storage_bucket(app: firebase_admin.App = None) -> storage.storage.Bucket:

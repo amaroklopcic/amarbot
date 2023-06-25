@@ -4,6 +4,7 @@ from typing import List
 from discord.ext import commands
 
 from lib.cogs.cog import CommonCog
+from lib.logging import get_logger
 from lib.ytdl import YTDLSource
 
 
@@ -12,6 +13,8 @@ class MusicCog(CommonCog):
 
     def __init__(self, bot: commands.Bot) -> None:
         super().__init__(bot)
+        self.logger = get_logger(__name__)
+        self.logger.debug("Initializing MusicCog...")
         self.controller = MusicController(bot.loop)
 
     @commands.command()
@@ -117,6 +120,9 @@ class MusicCog(CommonCog):
 
 class MusicController:
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+        self.logger = get_logger(__name__)
+        self.logger.debug("Initializing MusicController...")
+
         self.loop = loop
         self.queue: List[str] = []
         self.ctx: commands.Context | None = None
@@ -146,7 +152,6 @@ class MusicController:
         self._update_task = self.loop.create_task(self.update_loop())
 
     async def _play(self):
-        print("_play")
         next_song = self.queue[0]
 
         self.player = await YTDLSource.from_url(next_song, loop=self.loop, stream=True)
@@ -161,7 +166,7 @@ class MusicController:
     def _on_song_finish(self, error):
         # NOTE: doesnt run if the stop command is issued
         if error:
-            print(f"Player error: {error}")
+            self.logger.error(f"Player error:\n{error}")
 
         self.queue.pop(0)
         self.loop.call_soon_threadsafe(self._song_finished_event.set)

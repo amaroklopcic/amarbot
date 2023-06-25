@@ -1,23 +1,24 @@
-import os
 import json
+import os
 
-import discord
-from discord import ChannelType, app_commands
+from discord import ChannelType, File, Interaction, app_commands
 from discord.ext import commands
 
-
-def is_admin(interaction: discord.Interaction):
-    return interaction.user.guild_permissions.administrator
-
-
-def is_owner(interaction: discord.Interaction):
-    return interaction.user.id == interaction.guild.owner_id
+from lib.permissions import GuildPermissions
 
 
 class UtilsCog(commands.GroupCog, group_name="utils"):
     @app_commands.command()
-    @app_commands.check(is_admin)
-    async def count(self, interaction: discord.Interaction):
+    @app_commands.check(GuildPermissions.is_owner)
+    async def exit(self, interaction: Interaction):
+        """Command which forcefully kills the bot."""
+        # NOTE: only actually restarts if running in a container with a retart policy
+        await interaction.response.send_message("Restarting!")
+        exit(0)
+
+    @app_commands.command()
+    @app_commands.check(GuildPermissions.is_admin)
+    async def count(self, interaction: Interaction):
         """Returns total number of text messages from author in a channel."""
         await interaction.response.defer()
         count = 0
@@ -31,8 +32,8 @@ class UtilsCog(commands.GroupCog, group_name="utils"):
         )
 
     @app_commands.command()
-    @app_commands.check(is_admin)
-    async def channel_count(self, interaction: discord.Interaction):
+    @app_commands.check(GuildPermissions.is_admin)
+    async def channel_count(self, interaction: Interaction):
         """Returns total number of text messages in a channel."""
         await interaction.response.defer()
         count = 0
@@ -44,8 +45,8 @@ class UtilsCog(commands.GroupCog, group_name="utils"):
         )
 
     @app_commands.command()
-    @app_commands.check(is_owner)
-    async def export_guild(self, interaction: discord.Interaction):
+    @app_commands.check(GuildPermissions.is_owner)
+    async def export_guild(self, interaction: Interaction):
         """Returns all the messages from all the channels in a Discord guild."""
         await interaction.response.defer()
 
@@ -92,4 +93,4 @@ class UtilsCog(commands.GroupCog, group_name="utils"):
         )
 
         await interaction.followup.send(success_text)
-        await interaction.user.send(file=discord.File(filename))
+        await interaction.user.send(file=File(filename))
