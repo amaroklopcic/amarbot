@@ -161,6 +161,25 @@ class MemeCog(commands.GroupCog, group_name="memes"):
         )
         voice_client.play(grapefruit_video, after=lambda e: self._on_song_finish(e))
 
+    # -vvv- commands suggested by Amar -vvv-
+    @app_commands.command()
+    async def outro(self, interaction: Interaction):
+        """Plays an outro song before you leave."""
+
+        voice_client = await join_users_vc(self.bot, interaction)
+
+        if not voice_client:
+            await interaction.response.send_message("Something went wrong :(")
+            return
+
+        await interaction.response.send_message(
+            "Now playing the outro song", ephemeral=True
+        )
+
+        # join voice_channel and play "TheFatRat - Xenogenesis"
+        outro_song = YTDLSource.from_file("sounds/outro_meme.mp3")
+        voice_client.play(outro_song, after=lambda e: self._on_song_finish(e))
+
     # -vvv- commands suggested by Aladin -vvv-
     @app_commands.command()
     async def goggins(self, interaction: Interaction):
