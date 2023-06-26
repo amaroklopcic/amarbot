@@ -149,6 +149,8 @@ class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
 
         await interaction.response.defer()
 
+        filters = filters or ""
+
         category = []
         if "general" in filters:
             category.append("general")
@@ -177,6 +179,8 @@ class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
         self.logger.debug("Searching for a wallpaper...")
 
         await interaction.response.defer()
+
+        filters = filters or ""
 
         category = []
         if "general" in filters:
