@@ -1,4 +1,6 @@
 ﻿aiocron==1.8
+beautifulsoup4==4.12.2
+cloudscraper>=1.2
 dateparser==1.1.8
 discord.py @ git+https://github.com/Rapptz/discord.py@a8882f7cb2dff550102d83ee21c08d95ad259e39
 firebase-admin==6.1.0

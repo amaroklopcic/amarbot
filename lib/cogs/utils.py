@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 
@@ -14,6 +15,7 @@ class UtilsCog(commands.GroupCog, group_name="utils"):
         """Command which forcefully kills the bot."""
         # NOTE: only actually restarts if running in a container with a retart policy
         await interaction.response.send_message("Restarting!")
+        await asyncio.sleep(1)
         exit(0)
 
     @app_commands.command()
