@@ -24,7 +24,7 @@ class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
 
         self.bot = bot
         self.cron_job = aiocron.crontab(
-            "* * * * *", func=self.post_wallpaper, loop=self.bot.loop, tz=timezone.utc
+            "0 12 * * *", func=self.post_daily_wall, loop=self.bot.loop, tz=timezone.utc
         )
 
     async def make_request(self, url: str, method: str = "GET", **kwargs):
