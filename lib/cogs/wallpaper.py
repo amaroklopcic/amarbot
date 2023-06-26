@@ -139,12 +139,33 @@ class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
         image_urls = await self.fetch_wallpapers(category=["general"], purity=["sfw"])
 
     @app_commands.command()
-    async def random(self, interaction: Interaction):
-        """Sends a random high-quality wall paper."""
-        self.logger.debug("Sending wallpaper...")
+    async def random(self, interaction: Interaction, filters: Optional[str] = None):
+        """Sends a random high-quality wallpaper.
+
+        Parameters
+        -----------
+        filters: :class:`str`
+            Supply any of the following filters to narrow the wallpapers: `general`,
+            `anime`, `people`, `ai`, `sketchy`.
+
+        filters -- ronald mcdonald (default None)
+        """
+        self.logger.debug("Getting a random wallpaper...")
 
         await interaction.response.defer()
 
-        image_urls = await self.fetch_wallpapers(category=["general"], purity=["sfw"])
+        category = []
+        if "general" in filters:
+            category.append("general")
+        if "anime" in filters:
+            category.append("anime")
+        if "people" in filters:
+            category.append("people")
+
+        image_urls = await self.fetch_wallpapers(
+            category=category,
+            purity=["sketchy" if "sketchy" in filters else "sfw"],
+            ai_art=[True if "ai" in filters else None],
+        )
 
         await interaction.followup.send(random.choice(image_urls))
