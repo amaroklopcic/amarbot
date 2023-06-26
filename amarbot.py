@@ -7,6 +7,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from lib.cogs.ack import AcknowledgeCog
+from lib.cogs.help import HelpCog
 from lib.cogs.memes import MemeCog
 from lib.cogs.music import MusicCog
 from lib.cogs.quotes import QuotesCog
@@ -93,6 +94,7 @@ async def main(
         logger.info(f"Logged in as {bot.user.name} (ID: {bot.user.id})")
 
     async with bot:
+        await bot.add_cog(HelpCog(bot))
         await bot.add_cog(SyncCog(bot))
 
         if not no_ack:
