@@ -87,9 +87,7 @@ class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
         try:
             scraper = cloudscraper.create_scraper()
             resp = scraper.get(url=base_url, params=params)
-            print(resp)
 
-            # TODO: delete print statements
             text = resp.text
 
             soup = BeautifulSoup(text)
@@ -115,7 +113,6 @@ class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
 
                 endpoint = f"/full/{image_group}/wallhaven-{image_id}.{image_ext}"
                 full_image_url = "https://w.wallhaven.cc" + endpoint
-                print(full_image_url)
 
                 image_urls.append(full_image_url)
 
