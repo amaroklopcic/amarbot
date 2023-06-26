@@ -14,9 +14,7 @@ from lib.logging import get_logger
 
 
 class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
-    """Wallpaper related commands. Also fetches wallpapers daily and posts them to the
-    `#wallpapers` channel.
-    """
+    """Wallpaper related commands and daily random wallpapers."""
 
     def __init__(self, bot: commands.Bot) -> None:
         super().__init__()
@@ -59,16 +57,9 @@ class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
         self,
         category: List[Literal["general", "anime", "people"]],
         purity: List[Literal["sfw", "sketchy"]],
+        query: Optional[str] = None,
         ai_art: bool | None = None,
     ):
-        # https://wallhaven.cc/search
-        # ?categories=101
-        # &purity=100
-        # &atleast=2560x1440
-        # &ratios=landscape
-        # &sorting=random
-        # &order=desc
-        # &ai_art_filter=0
         base_url = "https://wallhaven.cc/search"
 
         categories_param = (
@@ -89,6 +80,9 @@ class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
 
         if ai_art is not None:
             params["ai_art_filter"] = f"{ai_art is True and 1 or 0}"
+
+        if query is not None:
+            params["q"] = query
 
         try:
             scraper = cloudscraper.create_scraper()
@@ -164,6 +158,36 @@ class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
             category.append("people")
 
         image_urls = await self.fetch_wallpapers(
+            category=category,
+            purity=["sketchy" if "sketchy" in filters else "sfw"],
+            ai_art=[True if "ai" in filters else None],
+        )
+
+        await interaction.followup.send(random.choice(image_urls))
+
+    @app_commands.command()
+    @app_commands.describe(
+        query="Search query (e.g. \"City\" or \"Dog\")",
+        filters="Possible filters: general, anime, people, ai, sketchy"
+    )
+    async def search(
+        self, interaction: Interaction, query: str, filters: Optional[str] = None
+    ):
+        """Search for a high-quality wallpaper."""
+        self.logger.debug("Searching for a wallpaper...")
+
+        await interaction.response.defer()
+
+        category = []
+        if "general" in filters:
+            category.append("general")
+        if "anime" in filters:
+            category.append("anime")
+        if "people" in filters:
+            category.append("people")
+
+        image_urls = await self.fetch_wallpapers(
+            query=query,
             category=category,
             purity=["sketchy" if "sketchy" in filters else "sfw"],
             ai_art=[True if "ai" in filters else None],
