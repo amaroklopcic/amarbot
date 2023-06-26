@@ -14,7 +14,9 @@ from lib.logging import get_logger
 
 
 class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
-    """Fetches wallpapers daily and posts them to a `#wallpapers` channel if it exists."""
+    """Wallpaper related commands. Also fetches wallpapers daily and posts them to the
+    `#wallpapers` channel.
+    """
 
     def __init__(self, bot: commands.Bot) -> None:
         super().__init__()
@@ -144,17 +146,11 @@ class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
                     await channel.send(random.choice(image_urls))
 
     @app_commands.command()
+    @app_commands.describe(
+        filters="Possible filters: general, anime, people, ai, sketchy"
+    )
     async def random(self, interaction: Interaction, filters: Optional[str] = None):
-        """Sends a random high-quality wallpaper.
-
-        Parameters
-        -----------
-        filters: :class:`str`
-            Supply any of the following filters to narrow the wallpapers: `general`,
-            `anime`, `people`, `ai`, `sketchy`.
-
-        filters -- ronald mcdonald (default None)
-        """
+        """Sends a random high-quality wallpaper."""
         self.logger.debug("Getting a random wallpaper...")
 
         await interaction.response.defer()
