@@ -7,7 +7,7 @@ import aiocron
 import aiohttp
 import cloudscraper
 from bs4 import BeautifulSoup
-from discord import Interaction, app_commands
+from discord import ChannelType, Interaction, app_commands
 from discord.ext import commands
 
 from lib.logging import get_logger
@@ -132,11 +132,16 @@ class DailyWallpapersCog(commands.GroupCog, group_name="walls"):
             raise
 
     async def post_daily_wall(self):
-        """Posts a daily wallpaper to the `#wallpapers` channel."""
+        """Posts a daily high-quality wallpaper to the `#wallpapers` channel."""
         self.logger.debug("Posting daily wallpaper...")
 
-        channel = "wallpapers"
+        channel_name = "wallpapers"
         image_urls = await self.fetch_wallpapers(category=["general"], purity=["sfw"])
+
+        for guild in self.bot.guilds:
+            for channel in guild.channels:
+                if channel.type == ChannelType.text and channel.name == channel_name:
+                    await channel.send(random.choice(image_urls))
 
     @app_commands.command()
     async def random(self, interaction: Interaction, filters: Optional[str] = None):
