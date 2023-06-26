@@ -14,6 +14,7 @@ from lib.cogs.quotes import QuotesCog
 from lib.cogs.reminders import RemindersCog
 from lib.cogs.sync import SyncCog
 from lib.cogs.utils import UtilsCog
+from lib.cogs.wallpaper import DailyWallpapersCog
 from lib.logging import get_logger, setup_discord_logging
 
 
@@ -61,6 +62,12 @@ def parse_args():
         help="disable utils-related commands",
         default=False,
     )
+    parser.add_argument(
+        "--no_walls",
+        action="store_true",
+        help="disable wallpaper-related commands",
+        default=False,
+    )
     return parser.parse_args()
 
 
@@ -72,6 +79,7 @@ async def main(
     no_qod: bool = False,
     no_reminders: bool = False,
     no_utils: bool = False,
+    no_walls: bool = False,
 ):
     logger = get_logger("amarbot")
     logger.info("Starting AmarBot...")
@@ -109,6 +117,8 @@ async def main(
             await bot.add_cog(RemindersCog(bot))
         if not no_utils:
             await bot.add_cog(UtilsCog(bot))
+        if not no_walls:
+            await bot.add_cog(DailyWallpapersCog(bot))
 
         await bot.start(os.environ.get("AMARBOT_TOKEN"))
 
@@ -127,6 +137,7 @@ if __name__ == "__main__":
             no_qod=args.no_qod,
             no_reminders=args.no_reminders,
             no_utils=args.no_utils,
+            no_walls=args.no_walls,
         ),
         debug=True,
     )
