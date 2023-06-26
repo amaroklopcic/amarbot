@@ -1,121 +1,107 @@
 import asyncio
-from typing import List
+from typing import List, Optional, Mapping
 
-from discord.ext import commands
+from discord import Interaction, app_commands
+from discord.ext.commands.bot import Bot
+from discord.ext.commands.cog import GroupCog
 
-from lib.cogs.cog import CommonCog
 from lib.logging import get_logger
 from lib.ytdl import YTDLSource
 
 
-class MusicCog(CommonCog):
+# TODO: refactor the entire cog to support multiple music controllers for different
+# channels
+# TODO: adjust the controller to download songs instead of streaming them, and
+# intelligently delete the downloaded songs, and predownload songs that are in the
+# queue
+class MusicCog(GroupCog, group_name="yt"):
     """Commands related to playing music."""
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: Bot) -> None:
         super().__init__(bot)
+
         self.logger = get_logger(__name__)
         self.logger.debug("Initializing MusicCog...")
-        self.controller = MusicController(bot.loop)
 
-    @commands.command()
-    async def play(self, ctx: commands.Context, *, url):
+        self.bot = bot
+        self.controllers: Mapping[str, MusicController] = {}
+
+    def get_controller(self, interaction: Interaction):
+        # TODO: create the controller if it doesn't exist
+        return self.controllers.get(interaction.guild.id)
+
+    @app_commands.command()
+    @app_commands.describe(
+        query='A generic query (e.g. "adele set fire to the rain") or a URL'
+    )
+    async def play(self, interaction: Interaction, *, query: str):
         """Plays from a query or url (almost anything youtube_dl supports)"""
-        async with ctx.typing():
-            self.controller.update_ctx(ctx)
+        controller = self.get_controller(interaction)
 
-            if self.controller.is_stopped:
-                self.controller.push(url)
-                self.controller.play()
-            else:
-                # TODO: adjust MusicController to handle this more cleanly / better
-                # skip the song first, so that the first song in the queue (the song
-                # that's current playing) gets removed from the queue, THEN insert our
-                # next song before the async player picks up the next song in the queue
-                self.controller.skip()
-                self.controller.insert(url)
+    @app_commands.command()
+    @app_commands.describe(volume="Number between 1-100")
+    async def volume(self, interaction: Interaction, volume: int):
+        """Changes the player's volume."""
 
-            await self.controller.on_player_start()
+    @app_commands.command()
+    async def pause(self, interaction: Interaction):
+        """Pause the music player."""
 
-    @commands.command()
-    async def volume(self, ctx: commands.Context, volume: int):
-        """Changes the player's volume"""
-        if ctx.voice_client is None:
-            return await ctx.send("Not connected to a voice channel.")
+    @app_commands.command()
+    async def resume(self, interaction: Interaction):
+        """Resume the music player."""
 
-        if volume < 1 or volume > 100:
-            return await ctx.send("Volume must be in range of 1-100.")
-
-        ctx.voice_client.source.volume = volume / 100
-
-        await ctx.send(f"Changed volume to {volume}%")
-
-    @commands.command()
-    async def pause(self, ctx: commands.Context):
-        """Pause the music player"""
-        if ctx.voice_client is None:
-            return await ctx.send("Not connected to a voice channel.")
-
-        self.controller.pause()
-
-    @commands.command()
-    async def resume(self, ctx: commands.Context):
-        """Resume the music player"""
-        if ctx.voice_client is None:
-            return await ctx.send("Not connected to a voice channel.")
-
-        self.controller.resume()
-
-    @commands.command()
-    async def queue(self, ctx: commands.Context, *, url: str | None = None):
+    @app_commands.command()
+    @app_commands.describe(
+        query='A generic query (e.g. "adele set fire to the rain") or a URL'
+    )
+    async def queue(self, interaction: Interaction, *, query: Optional[str] = None):
         """Add a song to the queue. If no url is provided, shows the current queue."""
-        if url:
-            async with ctx.typing():
-                self.controller.push(url)
-                await ctx.send(
-                    f"Added to queue: {url} ({len(self.controller.queue)} in queue)"
-                )
-        else:
-            async with ctx.typing():
-                if len(self.controller.queue) == 0:
-                    await ctx.send("No songs in the queue")
-                    return
 
-                list_str = "Songs in the current queue:\n"
-                for index, song_name in enumerate(self.controller.queue):
-                    list_str += f"> {index + 1}. {song_name}"
-                    if index == 0:
-                        list_str += " *(currently playing)*\n"
-                    else:
-                        list_str += "\n"
+    @app_commands.describe(
+        index="Number index of the song you want to remove from the queue"
+    )
+    @app_commands.command()
+    async def pop(self, interaction: Interaction, *, index: Optional[int] = None):
+        """Remove a song from the queue at index (default last)."""
 
-                await ctx.send(list_str.strip())
+    @app_commands.command()
+    async def next(self, interaction: Interaction):
+        """Play the next song in the queue."""
 
-    @commands.command()
-    async def pop(self, ctx: commands.Context, *, index: int):
-        """Remove a song from the queue at index (default last)"""
-        async with ctx.typing():
-            if len(self.controller.queue) < 2:
-                await ctx.send("No songs in the queue to remove")
-                return
+    @app_commands.command()
+    async def back(self, interaction: Interaction):
+        """Play the previous song in the queue."""
 
-            song_name = self.controller.pop(index and index - 1 or None)
-            await ctx.send(
-                f"Removed from queue: {song_name} ({len(self.controller.queue)} in queue)"
-            )
+    @app_commands.command()
+    async def stop(self, interaction: Interaction):
+        """Stops the player and disconnects the bot from voice."""
 
-    @commands.command()
-    async def skip(self, ctx: commands.Context):
-        """Skip the current playing song"""
-        self.controller.skip()
+    @app_commands.command()
+    async def scrub(self, interaction: Interaction):
+        """Fast-forward or rewind the current playing song."""
 
-    @commands.command()
-    async def stop(self, ctx: commands.Context):
-        """Stops and disconnects the bot from voice"""
-        await self.disconnect_vc(ctx)
+    @app_commands.command()
+    async def slowed(self, interaction: Interaction):
+        """Change the player to play songs 1.5x slower."""
 
-    @play.before_invoke
-    async def ensure_voice(self, ctx: commands.Context):
-        await self.join_authors_vc(ctx)
+    @app_commands.command()
+    async def spedup(self, interaction: Interaction):
+        """Change the player to play songs 1.5x faster."""
+
+    @app_commands.command()
+    @app_commands.describe(
+        query='A generic query (e.g. "adele set fire to the rain") or a URL'
+    )
+    async def mp3(self, interaction: Interaction, query: str):
+        """Send an mp3 download link to the channel."""
+
+    @app_commands.command()
+    @app_commands.describe(
+        query='A generic query (e.g. "adele set fire to the rain") or a URL'
+    )
+    async def mp4(self, interaction: Interaction, query: str):
+        """Send an mp4 download link to the channel."""
 
 
 class MusicController:
@@ -123,73 +109,7 @@ class MusicController:
         self.logger = get_logger(__name__)
         self.logger.debug("Initializing MusicController...")
 
-        self.loop = loop
-        self.queue: List[str] = []
-        self.ctx: commands.Context | None = None
-        self.player: YTDLSource | None = None
-        self.is_stopped = False
-
-        self._song_task: asyncio.Task | None = None
-        self._song_started_event: asyncio.Event = asyncio.Event()
-        self._song_finished_event: asyncio.Event = asyncio.Event()
-
-        # kick off event loop
-        self._update_task = self.loop.create_task(self.update_loop())
-
-    def update_ctx(self, ctx: commands.Context):
-        self.ctx = ctx
-
-    async def update_loop(self):
-        # run update loop every 1 second
-        await asyncio.sleep(1)
-
-        # schedule next song to be played
-        if not self.is_stopped and not self._song_task:
-            if len(self.queue) > 0:
-                self._song_task = self.loop.create_task(self._play())
-
-        # schedule next update
-        self._update_task = self.loop.create_task(self.update_loop())
-
-    async def _play(self):
-        next_song = self.queue[0]
-
-        self.player = await YTDLSource.from_url(next_song, loop=self.loop, stream=True)
-        self.queue[0] = f"{self.player.title}"
-        self.ctx.voice_client.play(self.player, after=lambda e: self._on_song_finish(e))
-
-        self._song_started_event.set()
-        await self.ctx.send(f"Now playing: {self.player.title}")
-
-        await self._song_finished_event.wait()
-
-    def _on_song_finish(self, error):
-        # NOTE: doesnt run if the stop command is issued
-        if error:
-            self.logger.error(f"Player error:\n{error}")
-
-        self.queue.pop(0)
-        self.loop.call_soon_threadsafe(self._song_finished_event.set)
-        self.loop.call_soon_threadsafe(self._song_started_event.clear)
-        self._song_task = None
-
-    def play(self):
-        """Plays a song from the top of the queue.
-
-        Returns a `asyncio.Task` that doesnt resolve until the song is
-        done playing.
-        """
-        self.is_stopped = False
-
-    def stop(self):
-        """Stops the current song and removes it from the queue. Does not schedule
-        the next song.
-        """
-        self.ctx.voice_client.stop()
-        self._song_task.cancel()
-        self.queue.pop(0)
-        self.is_stopped = True
-        self._song_task = None
+        self.queue: List[YTDLSource] = []
 
     def pause(self):
         """Pauses the current playing song."""
@@ -223,22 +143,3 @@ class MusicController:
         """Skip the currently playing song and schedule the next one in the queue."""
         self.ctx.voice_client.stop()
         # self.queue.pop(0)
-
-    # -vvv- events -vvv-
-    async def on_player_start(self):
-        """Blocking call that resolves when the players starts playing a song.
-
-        Resolves instantly if a song is currently playing.
-        """
-        await self._song_started_event.wait()
-
-    async def on_player_finish(self):
-        """Blocking call that resolves when the players finishes playing a song.
-
-        Resolves instantly if a song has already finished playing.
-        """
-        await self._song_finished_event.wait()
-
-    def __delattr__(self, __name: str) -> None:
-        # TODO: remove next update task from event loop
-        pass
