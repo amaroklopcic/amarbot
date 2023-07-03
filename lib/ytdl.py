@@ -48,28 +48,113 @@ logger = get_logger(__name__)
 # this, we'll need to have one audio stream that has seamless bytes streaming, so the queue,
 # would have to be built into some class that handles reading bytes from various audio
 # sources, and writes bytes to one audio stream
-class YTDLSourcesManager:
+class YTDLSourcesController(discord.AudioSource):
+    """Manages a number of `YTDLSource` objects in a queue and provides a `read` method
+    to read from them, cycling them as the sources get exhausted.
+    """
+
     # number of seconds before and after the track to fade in/out the audio
-    audio_fade_seconds = 5
+    audio_fade_time = 5.0
 
     # TODO: add a user defined volume and fade in/out to that volume instead of 1
-    def __init__(self) -> None:
+    def __init__(self, volume: float = 1.0, *, loop: asyncio.AbstractEventLoop) -> None:
+        self._volume = volume
+        self.loop = loop or asyncio.get_event_loop()
+
         self.sources: List[YTDLSource] = []
         self.current_source_index = 0
-        self.is_ready = False
 
-    def read(self):
+    @property
+    def is_ready(self):
+        """Checks if the current source is stream-ready."""
+        source =  self.current_source
+        if source is None or not source.is_stream_ready:
+            return False
+        return True
+
+    @property
+    def current_source(self):
+        """Return the current source."""
+        try:
+            return self.sources[self.current_source_index]
+        except IndexError:
+            return None
+
+    @property
+    def volume(self) -> float:
+        """Retrieves or sets the volume as a floating point percentage (e.g. ``1.0`` for
+        100%).
+        """
+        return self._volume
+
+    @volume.setter
+    def volume(self, value: float) -> None:
+        volume = max(value, 0.0)
+        self._volume = volume
+        for source in self.sources:
+            source.volume = volume
+
+    async def insert(self, query: str):
+        """Instantiates a `YTDLSource` from a query and adds it to the queue."""
+        new_source = await YTDLSource.from_query(query, loop=self.loop)
+        self.sources.append(new_source)
+        return new_source
+
+    # def pop(self, index: int):
+    #     """Remove a source from the queue."""
+
+    # def next(self):
+    #     """Sets the current source index to the next source in the queue."""
+    #     self.current_source_index += 1
+
+    # def back(self):
+    #     """Sets the current source index to the next source in the queue."""
+    #     self.current_source_index -= 1
+
+    async def wait_for_ready_state(self):
+        """Coroutine that resolves when the source is ready to start streaming."""
+        while self.is_ready is not True:
+            await asyncio.sleep(0)
+        return True
+
+    def read(self) -> bytes:
+        """Reads 20ms worth of audio. Returns silent audio data if the current source
+        isn't ready. Returns empty bytes the sources list is empty or if we've reached
+        the end of the source and there are no more sources in the queue.
+        """
+        source = self.current_source
+
+        if source is None:
+            return b""        
+
         if not self.is_ready:
-            raise Exception("stream not yet ready")
+            return AudioSegment.silent(duration=20, frame_rate=48000).raw_data
 
-        source = self.sources[self.current_source_index]
+        # NOTE: need to update get_time_remaining so that it checks the full duration
+        # of the song, and not how much audio data is in the buffer
         time_elapsed = source.get_time_elapsed()
         time_remaining = source.get_time_remaining()
-        # TODO: add volume fade in/out
-        # TODO: add source transitions
-        # if time_remaining <= 5.0:
-        #     self.current_source_index += 1
-        #     source = self.sources[self.current_source_index]
+
+        # check to see if source is exhausted
+        if time_remaining == 0:
+            if len(self.sources) == self.current_source_index + 1:
+                logger.debug("all sources exhausted")
+                return b""
+
+            if self.sources[self.current_source_index + 1].is_stream_ready:
+                logger.debug(
+                    f"{source.metadata['title']} has been exhausted, switching to next "
+                    "source!"
+                )
+                self.current_source_index += 1
+                return self.read()
+            else:
+                # return silent audio data until next source is ready
+                return AudioSegment.silent(duration=20, frame_rate=48000).raw_data
+
+        # calculate volume for fade in/out effect
+        factor = min([time_elapsed, time_remaining])
+        source.volume = (factor / (self.audio_fade_time * 1000)) * self.volume
 
         return source.read()
 
@@ -80,6 +165,12 @@ class YTDLSource(discord.PCMVolumeTransformer):
     client at the same time, without needing to fetch from YouTube twice.
     """
 
+    # TODO: programmed this in mind that download functionality will always be used,
+    # but should check to make it still works even without it
+    # NOTE: because of the way we built this, it'll also be possible to detect any
+    # issues with the stream before the bytes are actually getting read, so we have a
+    # chance to repair audio streams and continue downloading if we only get like half
+    # way through a download and an error occurs
     def __init__(
         self,
         source: discord.FFmpegPCMAudio,
@@ -102,7 +193,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
             self.download_task = self.loop.create_task(self.start_download())
 
     @classmethod
-    async def from_query(cls, query: str, *, loop: asyncio.AbstractEventLoop = None):
+    async def from_query(
+        cls, query: str, *, loop: asyncio.AbstractEventLoop = None, download=True
+    ):
         """Instantiate `YTDLSource` from a generic query or URL."""
         logger.debug(f"Fetching metadata for query: {query}")
         start_time = perf_counter()
@@ -124,6 +217,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             discord.FFmpegPCMAudio(data["url"], **ffmpeg_options),
             loop=loop,
             metadata=data,
+            download=download
         )
 
     @classmethod
@@ -168,6 +262,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
             await asyncio.sleep(0)
 
+        self.is_download_ready = True
+
         end_time = perf_counter()
         logger.info(
             f"Finished downloading {title} with {len(self._audio_buffer)} total bytes "
@@ -175,8 +271,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
             "seconds)"
         )
 
-    def write_buffer_to_file(self, filename: str = None) -> str:
-        """Writes the current audio buffer to a file. Internal `is_stream_ready` state
+    async def write_buffer_to_file(self, filename: str = None) -> str:
+        """Writes the current audio buffer to a file. Internal `is_download_ready` state
         must be `True`.
         """
         if not self.is_download_ready:
@@ -185,13 +281,21 @@ class YTDLSource(discord.PCMVolumeTransformer):
         # TODO: sanitize filename -> lowercase + remove special chars
         filename = filename or f"downloads/{self.metadata['id']}.mp3"
         logger.debug(f"Saving to downloads directory...")
+        logger.debug(len(self._audio_buffer))
+        logger.debug(len(self._audio_buffer) % 4)
         segment = AudioSegment(
             self._audio_buffer.copy(),
-            sample_width=2,
-            frame_rate=48000,
-            channels=2,
+            # sample_width=2,
+            # frame_rate=48000,
+            # channels=2,
         )
-        segment.export(filename, format="mp3")
+
+        filename = await self.loop.run_in_executor(
+            None, lambda: segment.export(filename, format="mp3")
+        )
+
+        print(filename)
+
         return filename
 
     def get_progress(self) -> float:
@@ -210,18 +314,23 @@ class YTDLSource(discord.PCMVolumeTransformer):
         """Returns number of miliseconds worth of audio data that has been read from the
         buffer.
         """
-        raise NotImplementedError()
+        return (self._audio_buffer_index + 1) * 20
 
     def get_time_remaining(self) -> float:
         """Returns number of miliseconds worth of audio data remaining in the audio
         buffer.
         """
+        # TODO: adjust this to check the duration of the source, not the length of the
+        # loaded buffer
         bytes_remaining = len(self._audio_buffer) - self._audio_buffer_index + 1
         return bytes_remaining * 20
 
     def read(self) -> bytes:
         if not self.is_stream_ready:
             raise Exception("stream not yet ready")
+
+        if self._audio_buffer_index + 1 > len(self._audio_buffer):
+            return b""
 
         self._audio_buffer_index += 1
         data = self._audio_buffer[self._audio_buffer_index]
