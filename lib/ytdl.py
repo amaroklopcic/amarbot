@@ -271,6 +271,13 @@ class YTDLSource(discord.PCMVolumeTransformer):
             "seconds)"
         )
 
+    def prepare_filename(self):
+        """Prepares a linux filesystem-compatible filename to be used by the current
+        source download.
+        """
+        title = self.metadata['title'].replace("/", "")
+        return title
+
     async def write_buffer_to_file(self, filename: str = None) -> str:
         """Writes the current audio buffer to a file. Internal `is_download_ready` state
         must be `True`.
@@ -278,23 +285,25 @@ class YTDLSource(discord.PCMVolumeTransformer):
         if not self.is_download_ready:
             raise Exception("download not yet available")
 
-        # TODO: sanitize filename -> lowercase + remove special chars
-        filename = filename or f"downloads/{self.metadata['id']}.mp3"
-        logger.debug(f"Saving to downloads directory...")
-        logger.debug(len(self._audio_buffer))
-        logger.debug(len(self._audio_buffer) % 4)
+        # NOTE: only replacing the '/' character since that is the only restricted
+        # filename character on Linux
+        title = self.metadata['title']
+        filename = filename or f"downloads/{title.replace('/', '')}.mp3"
+        logger.debug(f"Saving to {filename}")
+
         segment = AudioSegment(
-            self._audio_buffer.copy(),
-            # sample_width=2,
-            # frame_rate=48000,
-            # channels=2,
+            b"".join(self._audio_buffer),
+            sample_width=2,
+            frame_rate=48000,
+            channels=2,
         )
 
+        # NOTE: this works but has a chance to lag the playing audio stream
         filename = await self.loop.run_in_executor(
             None, lambda: segment.export(filename, format="mp3")
         )
 
-        print(filename)
+        logger.debug(filename)
 
         return filename
 
