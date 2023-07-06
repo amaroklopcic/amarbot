@@ -49,14 +49,18 @@ class MusicCog(GroupCog, group_name="yt"):
         """Plays from a query or url (almost anything youtube_dl supports)"""
         await interaction.response.defer()
 
+        # TODO: before we fetch the query, we should parse the URL and see if it's a
+        # playlist, and update the chat with something like: this is a playlist, this
+        # will take a while
         controller = self.get_controller(interaction)
-        player = await controller.insert(query)
+        await controller.insert(query)
+        source = controller.current_source
         await controller.wait_for_ready_state()
 
         voice_client = await join_users_vc(self.bot, interaction)
         voice_client.play(controller)
 
-        await interaction.followup.send(f"Now playing {player.metadata['title']}!")
+        await interaction.followup.send(f"Now playing {source.metadata['title']}!")
 
     @app_commands.command()
     async def grab(self, interaction: Interaction):
@@ -107,10 +111,14 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.command()
     async def next(self, interaction: Interaction):
         """Play the next song in the queue."""
+        controller = self.get_controller(interaction)
+        controller.next()
 
     @app_commands.command()
     async def back(self, interaction: Interaction):
         """Play the previous song in the queue."""
+        controller = self.get_controller(interaction)
+        controller.back()
 
     @app_commands.command()
     async def stop(self, interaction: Interaction):
