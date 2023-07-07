@@ -350,7 +350,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         """
         self.download_task = self.loop.create_task(self._start_download())
 
-    async def _start_download(self, _retry_attempt = 0):
+    async def _start_download(self, _retry_attempt=0):
         """Long running coroutine that starts downloading bytes from the audio source
         and keeps them in an internal buffer. Updates internal `is_stream_ready` state
         to `True` once the buffer has more than 1 second of audio data, and
@@ -399,7 +399,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             await self._start_download(_retry_attempt + 1)
         elif len(self._audio_buffer) == 0 and _retry_attempt == max_retries:
             logger.exception(
-                f"failed to download \"{title}\" after {_retry_attempt} retries"
+                f'failed to download "{title}" after {_retry_attempt} retries'
             )
             raise Exception("Failed to download any audio data from the source")
 

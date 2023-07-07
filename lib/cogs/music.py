@@ -17,6 +17,7 @@ from lib.common import join_users_vc
 # TODO: add a /progress command that returns something like this: ...............|........ 2:15 / 3:22
 # TODO: add a /repeat command that repeats songs in a queue or a specific song
 
+
 class MusicCog(GroupCog, group_name="yt"):
     """Commands related to playing music."""
 

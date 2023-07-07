@@ -139,5 +139,4 @@ if __name__ == "__main__":
             no_utils=args.no_utils,
             no_walls=args.no_walls,
         ),
-        debug=True,
     )
