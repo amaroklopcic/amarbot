@@ -113,12 +113,16 @@ class MusicCog(GroupCog, group_name="yt"):
         """Play the next song in the queue."""
         controller = self.get_controller(interaction)
         controller.next()
+        title = controller.current_source.metadata["title"]
+        interaction.response.send_message(f"Now playing *{title}*!")
 
     @app_commands.command()
     async def back(self, interaction: Interaction):
         """Play the previous song in the queue."""
         controller = self.get_controller(interaction)
         controller.back()
+        title = controller.current_source.metadata["title"]
+        interaction.response.send_message(f"Now playing *{title}*!")
 
     @app_commands.command()
     async def stop(self, interaction: Interaction):

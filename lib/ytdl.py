@@ -56,6 +56,7 @@ class YTDLSourcesController(discord.AudioSource):
     # number of songs to in the queue ahead of the current source to download ahead of
     # time
     n_songs_loaded = 1
+    wait_time_before_next_song_load = 3
 
     # number of seconds before and after the track to fade in/out the audio
     audio_fade_time = 5.0
@@ -73,8 +74,7 @@ class YTDLSourcesController(discord.AudioSource):
         self.sources: List[YTDLSource] = []
         self.current_source_index = 0
 
-        # TODO: add a forever-running task that clears audio buffers from out-of-range
-        # sources to save memory
+        self._loop_task = self.loop.create_task(self._update_loop())
 
     @property
     def is_ready(self):
@@ -129,6 +129,7 @@ class YTDLSourcesController(discord.AudioSource):
     def next(self):
         """Sets the current source index to the next source in the queue."""
         self.current_source_index += 1
+        self._prefetch_sources_audio_data()
 
     def back(self):
         """Sets the current source index to the next source in the queue."""
@@ -140,6 +141,18 @@ class YTDLSourcesController(discord.AudioSource):
             await asyncio.sleep(0)
         return True
 
+    def generate_silent_audio(self) -> bytes:
+        """Generates 20ms worth of 16-bit 48KHz stereo PCM silent audio bytes."""
+        sample_rate = 48000
+        duration = 0.02
+        frames = int(sample_rate * duration) * 2 * 2
+        return AudioSegment(
+            b"\0" * frames,
+            frame_rate=sample_rate,
+            sample_width=2,
+            channels=2,
+        ).raw_data
+
     def read(self) -> bytes:
         """Reads 20ms worth of audio. Returns silent audio data if the current source
         isn't ready. Returns empty bytes the sources list is empty or if we've reached
@@ -150,8 +163,14 @@ class YTDLSourcesController(discord.AudioSource):
         if source is None:
             return b""
 
-        if not self.is_ready:
-            return AudioSegment.silent(duration=20, frame_rate=48000).raw_data
+        if not source.is_stream_ready:
+            if not source.is_downloading:
+                logger.warning(
+                    "Audio source download should be started before the read method! "
+                    "This likely means source prefetching is not happening correctly."
+                )
+                source.start_download()
+            return self.generate_silent_audio()
 
         # NOTE: need to update get_time_remaining so that it checks the full duration
         # of the song, and not how much audio data is in the buffer
@@ -173,7 +192,7 @@ class YTDLSourcesController(discord.AudioSource):
                 return self.read()
             else:
                 # return silent audio data until next source is ready
-                return AudioSegment.silent(duration=20, frame_rate=48000).raw_data
+                return self.generate_silent_audio()
 
         # calculate volume for fade in/out effect
         factor = min([time_elapsed, time_remaining])
@@ -186,12 +205,20 @@ class YTDLSourcesController(discord.AudioSource):
         needed.
         """
         min_index = self.current_source_index
-        max_index = self.current_source_index + self.n_songs_loaded
+        max_index = self.current_source_index + self.n_songs_loaded + 1
 
         for source in self.sources[min_index:max_index]:
-            if source.download_task is None:
+            if not source.is_downloading:
                 logger.debug(f"Pre-downloading {source.metadata['title']}...")
                 source.start_download()
+                return
+
+    async def _update_loop(self):
+        while True:
+            # TODO: add some code that clears audio buffers from out-of-range sources to
+            # save memory
+            self._prefetch_sources_audio_data()
+            await asyncio.sleep(1)
 
 
 class YTDLSource(discord.PCMVolumeTransformer):
@@ -226,25 +253,23 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self._audio_buffer_index = -1
         self.download_task = None
 
+    @property
+    def is_downloading(self) -> bool:
+        return not self.download_task is None
+
+    @classmethod
+    def from_file(cls, filename: str | BufferedIOBase):
+        return cls(
+            discord.FFmpegPCMAudio(filename, **ffmpeg_options), data={"duration": 1}
+        )
+
     @staticmethod
     async def from_query(query: str, *, loop: asyncio.AbstractEventLoop = None):
         """Instantiate and return a single `YTDLSource` (or a list of `YTDLSource` if
         the query results in an extracted playlist) from a generic query or URL.
         """
-        logger.debug(f"Fetching metadata for query: {query}")
-        start_time = perf_counter()
-
-        ytdl = youtube_dl.YoutubeDL(YTDL_FORMAT_OPTIONS)
         loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(
-            None, lambda: ytdl.extract_info(query, download=False)
-        )
-
-        end_time = perf_counter()
-        logger.debug(
-            f"Fetched metadata for query: {query} (took {end_time - start_time:0.2f} "
-            "seconds)"
-        )
+        data = await YTDLSource.extract_info(query, loop=loop)
 
         data_type = data.get("_type")
 
@@ -277,23 +302,45 @@ class YTDLSource(discord.PCMVolumeTransformer):
             err_msg = f"Got unexpected return from ytdl extraction:\n{data}"
             raise Exception(err_msg)
 
-    @classmethod
-    def from_file(cls, filename: str | BufferedIOBase):
-        return cls(
-            discord.FFmpegPCMAudio(filename, **ffmpeg_options), data={"duration": 1}
+    @staticmethod
+    async def extract_info(query: str, *, loop: asyncio.AbstractEventLoop = None):
+        logger.debug(f"Fetching metadata for query: {query}")
+        start_time = perf_counter()
+
+        ytdl = youtube_dl.YoutubeDL(YTDL_FORMAT_OPTIONS)
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(
+            None, lambda: ytdl.extract_info(query, download=False)
         )
 
-    async def wait_for_stream_ready_state(self):
-        """Coroutine that resolves when the source is ready to start streaming."""
-        while self.is_stream_ready is not True:
-            await asyncio.sleep(0)
-        return True
+        end_time = perf_counter()
+        logger.debug(
+            f"Fetched metadata for query: {query} (took {end_time - start_time:0.2f} "
+            "seconds)"
+        )
 
-    async def wait_for_download_ready_state(self):
-        """Coroutine that resolves when the source is fully downloaded."""
-        while self.is_download_ready is not True:
-            await asyncio.sleep(0)
-        return True
+        return data
+
+    async def refetch_metadata(self):
+        data = await YTDLSource.extract_info(self.metadata["webpage_url"])
+
+        data_type = data.get("_type")
+
+        if data_type is None:
+            if "entries" in data:
+                data = data["entries"][0]
+
+            self.metadata = data
+        elif data_type == "playlist":
+            # NOTE: A YTDLSource instance should represent a single song/video, hence
+            # why we're explicitly throwing here
+            raise Exception(
+                "Tried to refetch metadata and got a playlist from extracted info:\n"
+                f"{data}"
+            )
+        else:
+            err_msg = f"Got unexpected return from ytdl extraction:\n{data}"
+            raise Exception(err_msg)
 
     def start_download(self):
         """Long running coroutine that starts downloading bytes from the audio source
@@ -303,7 +350,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         """
         self.download_task = self.loop.create_task(self._start_download())
 
-    async def _start_download(self):
+    async def _start_download(self, _retry_attempt = 0):
         """Long running coroutine that starts downloading bytes from the audio source
         and keeps them in an internal buffer. Updates internal `is_stream_ready` state
         to `True` once the buffer has more than 1 second of audio data, and
@@ -319,8 +366,11 @@ class YTDLSource(discord.PCMVolumeTransformer):
         # very long time)
 
         title = self.metadata["title"]
+        expected_duration = self.metadata["duration"]
         logger.debug(f"Starting download for: {title}")
         start_time = perf_counter()
+
+        max_retries = 3
 
         total_ms = 0
         while True:
@@ -336,11 +386,29 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
             await asyncio.sleep(0)
 
+        if len(self._audio_buffer) == 0 and _retry_attempt != max_retries:
+            # TODO: not sure if attempting to reread the same URL does anything,
+            # might be worth a shot as part of the retries, since reading the URL gives
+            # a 403 error when executing here but when I open it manually it works
+            # fine...
+            logger.info(
+                "detected some sort of download error, refetching metadata and "
+                f"retrying (attempt #{_retry_attempt}/{max_retries})"
+            )
+            await self.refetch_metadata()
+            await self._start_download(_retry_attempt + 1)
+        elif len(self._audio_buffer) == 0 and _retry_attempt == max_retries:
+            logger.exception(
+                f"failed to download \"{title}\" after {_retry_attempt} retries"
+            )
+            raise Exception("Failed to download any audio data from the source")
+
+        total_bytes = len(b"".join(self._audio_buffer))
         self.is_download_ready = True
 
         end_time = perf_counter()
         logger.info(
-            f"Finished downloading {title} with {len(self._audio_buffer)} total bytes "
+            f"Finished downloading {title} with {total_bytes} total bytes "
             f"and {total_ms / 1000} seconds (took {end_time - start_time:0.2f} "
             "seconds)"
         )
@@ -381,6 +449,18 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
         return filename
 
+    async def wait_for_stream_ready_state(self):
+        """Coroutine that resolves when the source is ready to start streaming."""
+        while self.is_stream_ready is not True:
+            await asyncio.sleep(0)
+        return True
+
+    async def wait_for_download_ready_state(self):
+        """Coroutine that resolves when the source is fully downloaded."""
+        while self.is_download_ready is not True:
+            await asyncio.sleep(0)
+        return True
+
     def get_progress(self) -> float:
         """Returns a float (0.0 through 1.0) indicating how much audio data has been
         read by the buffer.
@@ -412,7 +492,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         if not self.is_stream_ready:
             raise Exception("stream not yet ready")
 
-        if self._audio_buffer_index + 1 > len(self._audio_buffer):
+        if self._audio_buffer_index + 1 >= len(self._audio_buffer):
             return b""
 
         self._audio_buffer_index += 1
