@@ -53,6 +53,8 @@ class MusicCog(GroupCog, group_name="yt"):
         # TODO: before we fetch the query, we should parse the URL and see if it's a
         # playlist, and update the chat with something like: this is a playlist, this
         # will take a while
+        # TODO: adding a song that already exists in the controller should not be
+        # redownloaded
         controller = self.get_controller(interaction)
         await controller.insert(query)
         source = controller.current_source
