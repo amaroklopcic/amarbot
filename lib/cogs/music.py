@@ -115,7 +115,7 @@ class MusicCog(GroupCog, group_name="yt"):
         controller = self.get_controller(interaction)
         controller.next()
         title = controller.current_source.metadata["title"]
-        interaction.response.send_message(f"Now playing *{title}*!")
+        await interaction.response.send_message(f"Now playing *{title}*!")
 
     @app_commands.command()
     async def back(self, interaction: Interaction):
@@ -123,7 +123,7 @@ class MusicCog(GroupCog, group_name="yt"):
         controller = self.get_controller(interaction)
         controller.back()
         title = controller.current_source.metadata["title"]
-        interaction.response.send_message(f"Now playing *{title}*!")
+        await interaction.response.send_message(f"Now playing *{title}*!")
 
     @app_commands.command()
     async def stop(self, interaction: Interaction):
