@@ -126,6 +126,7 @@ class YTDLSourcesController(discord.AudioSource):
     # def pop(self, index: int):
     #     """Remove a source from the queue."""
 
+    # TODO: next/back commands should reset the song and play from the beginning
     def next(self):
         """Sets the current source index to the next source in the queue."""
         self.current_source_index += 1
