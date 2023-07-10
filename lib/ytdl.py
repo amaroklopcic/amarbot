@@ -198,7 +198,19 @@ class YTDLSourcesController(discord.AudioSource):
         factor = min([time_elapsed, time_remaining])
         source.volume = (factor / (self.audio_fade_time * 1000)) * self.volume
 
-        return source.read()
+        data = source.read()
+
+        # TODO: check for slowed down/spedup effect and mutilate sound here
+
+        # TODO: improve this warning
+        if data == b"":
+            # data should not be empty bytes here, we should have already switched songs
+            # at this point.
+            logger.warning(
+                f"source \"{source.metadata['title']}\" returned empty bytes"
+            )
+
+        return data
 
     def _prefetch_sources_audio_data(self):
         """Prefetches and downloads audio data from upcoming sources before they're
@@ -321,8 +333,13 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
         return data
 
-    async def refetch_metadata(self):
-        data = await YTDLSource.extract_info(self.metadata["webpage_url"])
+    async def refetch_metadata(self, from_title=False):
+        if from_title:
+            data = await YTDLSource.extract_info(
+                f"{self.metadata['uploader']} {self.metadata['title']}"
+            )
+        else:
+            data = await YTDLSource.extract_info(self.metadata["webpage_url"])
 
         data_type = data.get("_type")
 
@@ -395,7 +412,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 "detected some sort of download error, refetching metadata and "
                 f"retrying (attempt #{_retry_attempt}/{max_retries})"
             )
-            await self.refetch_metadata()
+            await asyncio.sleep(_retry_attempt * 2)
+            await self.refetch_metadata(from_title=_retry_attempt % 2 == 0)
             await self._start_download(_retry_attempt + 1)
         elif len(self._audio_buffer) == 0 and _retry_attempt == max_retries:
             logger.exception(
@@ -485,7 +503,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         """
         # TODO: adjust this to check the duration of the source, not the length of the
         # loaded buffer
-        bytes_remaining = len(self._audio_buffer) - self._audio_buffer_index + 1
+        bytes_remaining = len(self._audio_buffer) - (self._audio_buffer_index + 1)
         return bytes_remaining * 20
 
     def read(self) -> bytes:
@@ -498,4 +516,5 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self._audio_buffer_index += 1
         data = self._audio_buffer[self._audio_buffer_index]
 
-        return data
+        # adjust the volume
+        return audioop.mul(data, 2, min(self._volume, 2.0))
