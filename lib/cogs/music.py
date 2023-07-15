@@ -42,6 +42,11 @@ class MusicCog(GroupCog, group_name="yt"):
             self.controllers[guild_id] = YTDLSourcesController(loop=self.bot.loop)
             return self.controllers[guild_id]
 
+    def delete_controller(self, interaction: Interaction):
+        guild_id = interaction.guild.id
+        if guild_id in self.controllers.keys():
+            del self.controllers[guild_id]
+
     @app_commands.command()
     @app_commands.describe(
         query='A generic query (e.g. "adele set fire to the rain") or a URL'
@@ -66,9 +71,29 @@ class MusicCog(GroupCog, group_name="yt"):
         await interaction.followup.send(f"Now playing {source.metadata['title']}!")
 
     @app_commands.command()
+    async def stop(self, interaction: Interaction):
+        """Stops the player and disconnects the bot from voice."""
+        self.logger.debug(f"Stopping the music player in {interaction.guild.name}...")
+        await interaction.response.defer()
+
+        ctx = await self.bot.get_context(interaction)
+        if ctx.voice_client:
+            await ctx.voice_client.disconnect()
+
+        controller = self.get_controller(interaction)
+        controller.cleanup()
+        self.delete_controller(interaction)
+
+        await interaction.followup.send("Goodbye!")
+
+    @app_commands.command()
     async def grab(self, interaction: Interaction):
         """Sends a downloadable mp3 of the current playing song to the channel."""
         await interaction.response.defer()
+
+        # TODO: validate this isn't a livestream and the song isn't too large to send
+        # to a Discord channel (we should be able to check max file size limit for the
+        # specific guild)
 
         controller = self.get_controller(interaction)
         source = controller.current_source
@@ -126,10 +151,6 @@ class MusicCog(GroupCog, group_name="yt"):
         controller.back()
         title = controller.current_source.metadata["title"]
         await interaction.response.send_message(f"Now playing *{title}*!")
-
-    @app_commands.command()
-    async def stop(self, interaction: Interaction):
-        """Stops the player and disconnects the bot from voice."""
 
     @app_commands.command()
     async def scrub(self, interaction: Interaction):

@@ -39,7 +39,10 @@ YTDL_FORMAT_OPTIONS = {
 }
 
 # ffmpeg -vn option disables video
-ffmpeg_options = {"options": "-vn"}
+ffmpeg_options = {
+    "options": "-vn",
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+}
 
 logger = get_logger(__name__)
 
@@ -213,6 +216,15 @@ class YTDLSourcesController(discord.AudioSource):
 
         return data
 
+    def quit(self):
+        """Stops all in-progress downloads and cleans up all the sources."""
+        for source in self.sources:
+            if source.is_downloading:
+                source.download_task.cancel()
+            source.cleanup()
+
+        self.sources = []
+
     def _prefetch_sources_audio_data(self):
         """Prefetches and downloads audio data from upcoming sources before they're
         needed.
@@ -269,6 +281,10 @@ class YTDLSource(discord.PCMVolumeTransformer):
     @property
     def is_downloading(self) -> bool:
         return not self.download_task is None
+
+    @property
+    def is_livestream(self):
+        return self.metadata["is_live"]
 
     @classmethod
     def from_file(cls, filename: str | BufferedIOBase):
@@ -467,6 +483,11 @@ class YTDLSource(discord.PCMVolumeTransformer):
         logger.debug(filename)
 
         return filename
+
+    def cleanup(self):
+        self._audio_buffer = []
+        self._audio_buffer_index = -1
+        super().cleanup()
 
     async def wait_for_stream_ready_state(self):
         """Coroutine that resolves when the source is ready to start streaming."""
