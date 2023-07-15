@@ -60,6 +60,8 @@ class MusicCog(GroupCog, group_name="yt"):
         # will take a while
         # TODO: adding a song that already exists in the controller should not be
         # redownloaded
+        # TODO: this command should replace the current playing song, currently it just
+        # adds it to the queue
         controller = self.get_controller(interaction)
         await controller.insert(query)
         source = controller.current_source
