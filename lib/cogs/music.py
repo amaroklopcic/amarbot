@@ -10,10 +10,6 @@ from lib.ytdl import YTDLSource, YTDLSourcesController
 from lib.common import join_users_vc
 
 
-# TODO: refactor the entire cog to support multiple music controllers for different
-# channels
-# TODO: adjust the controoler to steam the first song to avoid delays, and download the
-# song in the background at the same time. songs added to a queue should be set to download
 # TODO: add a /progress command that returns something like this: ...............|........ 2:15 / 3:22
 # TODO: add a /repeat command that repeats songs in a queue or a specific song
 
