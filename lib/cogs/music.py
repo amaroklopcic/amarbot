@@ -47,6 +47,14 @@ class MusicCog(GroupCog, group_name="yt"):
         if guild_id in self.controllers.keys():
             del self.controllers[guild_id]
 
+    async def check_voice(self, interaction: Interaction):
+        ctx = await self.bot.get_context(interaction)
+        if ctx.voice_client is None:
+            return await interaction.response.send_message(
+                "Not connected to a voice channel."
+            )
+        return ctx.voice_client
+
     @app_commands.command()
     @app_commands.describe(
         query='A generic query (e.g. "adele set fire to the rain") or a URL'
@@ -115,14 +123,40 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.describe(volume="Number between 1-100")
     async def volume(self, interaction: Interaction, volume: int):
         """Changes the player's volume."""
+        # TODO: needs to be tested
+        voice_client = await self.check_voice(interaction)
+        if not voice_client:
+            return
+
+        if volume < 1 or volume > 100:
+            return await interaction.response.send_message(
+                "Volume must be a number in the range of 1-100."
+            )
+
+        controller = self.get_controller(interaction)
+        controller.volume = volume / 100
+
+        await interaction.response.send_message(f"Changed volume to {volume}%")
 
     @app_commands.command()
     async def pause(self, interaction: Interaction):
         """Pause the music player."""
+        # TODO: needs to be tested
+        voice_client = await self.check_voice(interaction)
+        if not voice_client:
+            return
+
+        voice_client.pause()
 
     @app_commands.command()
     async def resume(self, interaction: Interaction):
         """Resume the music player."""
+        # TODO: needs to be tested
+        voice_client = await self.check_voice(interaction)
+        if not voice_client:
+            return
+
+        voice_client.resume()
 
     @app_commands.command()
     @app_commands.describe(
@@ -141,6 +175,7 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.command()
     async def next(self, interaction: Interaction):
         """Play the next song in the queue."""
+        # TODO: throws if there is no controller or bot is not in channel
         controller = self.get_controller(interaction)
         controller.next()
         title = controller.current_source.metadata["title"]
@@ -149,6 +184,7 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.command()
     async def back(self, interaction: Interaction):
         """Play the previous song in the queue."""
+        # TODO: throws if there is no controller or bot is not in channel
         controller = self.get_controller(interaction)
         controller.back()
         title = controller.current_source.metadata["title"]
