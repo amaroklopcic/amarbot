@@ -2,6 +2,7 @@ import asyncio
 from typing import List, Optional, Mapping
 
 from discord import Interaction, app_commands, File
+from discord.errors import HTTPException
 from discord.ext.commands.bot import Bot
 from discord.ext.commands.cog import GroupCog
 
@@ -95,25 +96,52 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.command()
     async def grab(self, interaction: Interaction):
         """Sends a downloadable mp3 of the current playing song to the channel."""
-        await interaction.response.defer()
-
-        # TODO: validate this isn't a livestream and the song isn't too large to send
-        # to a Discord channel (we should be able to check max file size limit for the
-        # specific guild)
-
         controller = self.get_controller(interaction)
         source = controller.current_source
 
         if source is None:
-            await interaction.followup.send("There is no song currently playing")
+            await interaction.response.send_message(
+                "There is no song currently playing"
+            )
             return
 
-        # await interaction.followup.send("waiting for song to finish downloading...")
-        await source.wait_for_download_ready_state()
-        # await interaction.followup.edit_message("converting song to mp3...")
-        filename = await source.write_buffer_to_file()
+        if source.is_livestream:
+            await interaction.response.send_message("Can't download a livestream!")
+            return
 
-        await interaction.followup.send(file=File(filename))
+        await interaction.response.defer()
+        await interaction.followup.send("Downloading song...")
+
+        await source.wait_for_download_ready_state()
+
+        await interaction.edit_original_response(content="Converting song...")
+
+        filename = await source.write_buffer_to_file()
+        file = File(fp=filename, filename=f"{source.metadata['title']}.mp3")
+
+        try:
+            await interaction.edit_original_response(
+                content="Here's the downloaded song!",
+                attachments=[file],
+            )
+        except HTTPException as e:
+            if e.status == 413:
+                await interaction.edit_original_response(
+                    content=(
+                        f"File size exceeds the guild's max file size "
+                        f"({(interaction.guild.filesize_limit / 1024) / 1024:.2f} MB)"
+                    )
+                )
+            else:
+                err_msg = "Encountered an unexpected issue when trying to send the file"
+                await interaction.edit_original_response(content=err_msg)
+                self.logger.exception(err_msg)
+                raise
+        except Exception as e:
+            err_msg = "Encountered an unexpected issue when trying to send the file"
+            await interaction.edit_original_response(content=err_msg)
+            self.logger.exception(err_msg)
+            raise
 
     @app_commands.command()
     @app_commands.describe(volume="Number between 1-100")
