@@ -119,7 +119,6 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.describe(volume="Number between 1-100")
     async def volume(self, interaction: Interaction, volume: int):
         """Changes the player's volume."""
-        # TODO: needs to be tested
         voice_client = await self.check_voice(interaction)
         if not voice_client:
             return
