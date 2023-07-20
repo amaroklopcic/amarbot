@@ -284,7 +284,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
     @property
     def is_livestream(self):
-        return self.metadata["is_live"]
+        return self.metadata.get("is_live", False)
 
     @classmethod
     def from_file(cls, filename: str | BufferedIOBase):
