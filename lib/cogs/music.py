@@ -137,22 +137,24 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.command()
     async def pause(self, interaction: Interaction):
         """Pause the music player."""
-        # TODO: needs to be tested
         voice_client = await self.check_voice(interaction)
         if not voice_client:
             return
 
         voice_client.pause()
 
+        await interaction.response.send_message(f"Paused!")
+
     @app_commands.command()
     async def resume(self, interaction: Interaction):
         """Resume the music player."""
-        # TODO: needs to be tested
         voice_client = await self.check_voice(interaction)
         if not voice_client:
             return
 
         voice_client.resume()
+
+        await interaction.response.send_message(f"Resumed!")
 
     @app_commands.command()
     @app_commands.describe(
