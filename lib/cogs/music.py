@@ -202,20 +202,40 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.command()
     async def next(self, interaction: Interaction):
         """Play the next song in the queue."""
-        # TODO: throws if there is no controller or bot is not in channel
+        voice_client = await self.check_voice(interaction)
+        if not voice_client:
+            return
+
         controller = self.get_controller(interaction)
+
+        if controller.current_source_index + 2 > len(controller.sources):
+            await interaction.response.send_message("No next song in the queue.")
+            return
+
         controller.next()
-        title = controller.current_source.metadata["title"]
-        await interaction.response.send_message(f"Now playing *{title}*!")
+
+        await interaction.response.send_message(
+            f"Now playing *{controller.current_source.metadata['title']}*!"
+        )
 
     @app_commands.command()
     async def back(self, interaction: Interaction):
         """Play the previous song in the queue."""
-        # TODO: throws if there is no controller or bot is not in channel
+        voice_client = await self.check_voice(interaction)
+        if not voice_client:
+            return
+
         controller = self.get_controller(interaction)
+
+        if controller.current_source_index - 1 < 0:
+            await interaction.response.send_message("No previous song.")
+            return
+
         controller.back()
-        title = controller.current_source.metadata["title"]
-        await interaction.response.send_message(f"Now playing *{title}*!")
+
+        await interaction.response.send_message(
+            f"Now playing *{controller.current_source.metadata['title']}*!"
+        )
 
     @app_commands.command()
     async def scrub(self, interaction: Interaction):
