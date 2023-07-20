@@ -286,6 +286,10 @@ class YTDLSource(discord.PCMVolumeTransformer):
     def is_livestream(self):
         return self.metadata.get("is_live", False)
 
+    @property
+    def to_bytes(self):
+        return b"".join(self._audio_buffer)
+
     @classmethod
     def from_file(cls, filename: str | BufferedIOBase):
         return cls(
@@ -438,7 +442,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             )
             raise Exception("Failed to download any audio data from the source")
 
-        total_bytes = len(b"".join(self._audio_buffer))
+        total_bytes = len(self.to_bytes)
         self.is_download_ready = True
 
         end_time = perf_counter()
@@ -469,7 +473,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         logger.debug(f"Saving to {filename}")
 
         segment = AudioSegment(
-            b"".join(self._audio_buffer),
+            self.to_bytes,
             sample_width=2,
             frame_rate=48000,
             channels=2,
