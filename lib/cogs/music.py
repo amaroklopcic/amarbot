@@ -91,6 +91,7 @@ class MusicCog(GroupCog, group_name="yt"):
         self.delete_controller(interaction)
 
         await voice_client.disconnect()
+        voice_client.cleanup()
 
         await interaction.response.send_message("Goodbye!")
 
