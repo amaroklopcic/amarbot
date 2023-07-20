@@ -74,6 +74,8 @@ class YTDLSourcesController(discord.AudioSource):
         self._volume = volume
         self.loop = loop or asyncio.get_event_loop()
 
+        self.is_stopped = False
+
         self.sources: List[YTDLSource] = []
         self.current_source_index = 0
 
@@ -164,7 +166,7 @@ class YTDLSourcesController(discord.AudioSource):
         """
         source = self.current_source
 
-        if source is None:
+        if source is None or self.is_stopped:
             return b""
 
         if not source.is_stream_ready:
@@ -216,14 +218,18 @@ class YTDLSourcesController(discord.AudioSource):
 
         return data
 
-    def quit(self):
+    def cleanup(self):
         """Stops all in-progress downloads and cleans up all the sources."""
+        self.is_stopped = True
+
         for source in self.sources:
             if source.is_downloading:
                 source.download_task.cancel()
             source.cleanup()
 
         self.sources = []
+
+        super().cleanup()
 
     def _prefetch_sources_audio_data(self):
         """Prefetches and downloads audio data from upcoming sources before they're

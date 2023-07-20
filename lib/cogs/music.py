@@ -81,17 +81,18 @@ class MusicCog(GroupCog, group_name="yt"):
     async def stop(self, interaction: Interaction):
         """Stops the player and disconnects the bot from voice."""
         self.logger.debug(f"Stopping the music player in {interaction.guild.name}...")
-        await interaction.response.defer()
 
-        ctx = await self.bot.get_context(interaction)
-        if ctx.voice_client:
-            await ctx.voice_client.disconnect()
+        voice_client = await self.check_voice(interaction)
+        if not voice_client:
+            return
 
         controller = self.get_controller(interaction)
         controller.cleanup()
         self.delete_controller(interaction)
 
-        await interaction.followup.send("Goodbye!")
+        await voice_client.disconnect()
+
+        await interaction.response.send_message("Goodbye!")
 
     @app_commands.command()
     async def grab(self, interaction: Interaction):
