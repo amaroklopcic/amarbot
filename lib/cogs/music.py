@@ -44,45 +44,64 @@ class MusicCog(GroupCog, group_name="yt"):
         if guild_id in self.controllers.keys():
             del self.controllers[guild_id]
 
-    async def check_voice(self, interaction: Interaction):
+    async def get_voice_channel(self, interaction: Interaction):
+        """Returns the current `discord.voice_client.VoiceClient` instance."""
         ctx = await self.bot.get_context(interaction)
-        if ctx.voice_client is None:
+        return ctx.voice_client
+
+    async def ensure_voice(self, interaction: Interaction):
+        """Checks if the bot is connected to a voice channel and returns the
+        `discord.voice_client.VoiceClient` instance if it is.
+        """
+        voice_client = await self.get_voice_channel(interaction)
+        if voice_client is None:
             return await interaction.response.send_message(
                 "Not connected to a voice channel."
             )
-        return ctx.voice_client
+        return voice_client
 
     @app_commands.command()
     @app_commands.describe(
         query='A generic query (e.g. "adele set fire to the rain") or a URL'
     )
     async def play(self, interaction: Interaction, *, query: str):
-        """Plays from a query or url (almost anything youtube_dl supports)"""
+        """Plays from a query or url (almost anything youtube_dl supports)."""
         await interaction.response.defer()
 
-        # TODO: before we fetch the query, we should parse the URL and see if it's a
-        # playlist, and update the chat with something like: this is a playlist, this
-        # will take a while
         # TODO: adding a song that already exists in the controller should not be
         # redownloaded
-        # TODO: this command should replace the current playing song, currently it just
-        # adds it to the queue
+        source = await YTDLSource.from_query(query, loop=self.bot.loop)
+
         controller = self.get_controller(interaction)
-        await controller.insert(query)
-        source = controller.current_source
+        controller.append(source)
         await controller.wait_for_ready_state()
 
-        voice_client = await join_users_vc(self.bot, interaction)
-        voice_client.play(controller)
+        voice_client = await self.get_voice_channel(interaction)
+        if not voice_client:
+            voice_client = await join_users_vc(self.bot, interaction)
 
-        await interaction.followup.send(f"Now playing {source.metadata['title']}!")
+        if voice_client.is_playing():
+            voice_client.source = controller
+            if isinstance(source, list):
+                await interaction.followup.send(
+                    f"Added a playlist with **{len(source)}** songs to the queue."
+                )
+            else:
+                await interaction.followup.send(
+                    f"Added **{source.metadata['title']}** to the queue."
+                )
+        else:
+            voice_client.play(controller)
+            await interaction.followup.send(
+                f"Now playing **{controller.current_source.metadata['title']}**!"
+            )
 
     @app_commands.command()
     async def stop(self, interaction: Interaction):
         """Stops the player and disconnects the bot from voice."""
         self.logger.debug(f"Stopping the music player in {interaction.guild.name}...")
 
-        voice_client = await self.check_voice(interaction)
+        voice_client = await self.ensure_voice(interaction)
         if not voice_client:
             return
 
@@ -149,7 +168,7 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.describe(volume="Number between 1-100")
     async def volume(self, interaction: Interaction, volume: int):
         """Changes the player's volume."""
-        voice_client = await self.check_voice(interaction)
+        voice_client = await self.ensure_voice(interaction)
         if not voice_client:
             return
 
@@ -166,7 +185,7 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.command()
     async def pause(self, interaction: Interaction):
         """Pause the music player."""
-        voice_client = await self.check_voice(interaction)
+        voice_client = await self.ensure_voice(interaction)
         if not voice_client:
             return
 
@@ -177,7 +196,7 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.command()
     async def resume(self, interaction: Interaction):
         """Resume the music player."""
-        voice_client = await self.check_voice(interaction)
+        voice_client = await self.ensure_voice(interaction)
         if not voice_client:
             return
 
@@ -202,7 +221,7 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.command()
     async def next(self, interaction: Interaction):
         """Play the next song in the queue."""
-        voice_client = await self.check_voice(interaction)
+        voice_client = await self.ensure_voice(interaction)
         if not voice_client:
             return
 
@@ -215,13 +234,13 @@ class MusicCog(GroupCog, group_name="yt"):
         controller.next()
 
         await interaction.response.send_message(
-            f"Now playing *{controller.current_source.metadata['title']}*!"
+            f"Now playing **{controller.current_source.metadata['title']}**!"
         )
 
     @app_commands.command()
     async def back(self, interaction: Interaction):
         """Play the previous song in the queue."""
-        voice_client = await self.check_voice(interaction)
+        voice_client = await self.ensure_voice(interaction)
         if not voice_client:
             return
 
@@ -234,7 +253,7 @@ class MusicCog(GroupCog, group_name="yt"):
         controller.back()
 
         await interaction.response.send_message(
-            f"Now playing *{controller.current_source.metadata['title']}*!"
+            f"Now playing **{controller.current_source.metadata['title']}**!"
         )
 
     @app_commands.command()
