@@ -80,6 +80,13 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.download_task = None
 
     @property
+    def full_title(self):
+        """Returns the full artist & title of the song (e.g. "Eminem - Mockingbird")"""
+        title = self.metadata["title"]
+        artist = self.metadata.get("artist") or self.metadata["uploader"]
+        return f"{artist} - {title}".strip()
+
+    @property
     def is_downloading(self) -> bool:
         return not self.download_task is None
 

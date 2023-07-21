@@ -205,11 +205,26 @@ class MusicCog(GroupCog, group_name="yt"):
         await interaction.response.send_message(f"Resumed!")
 
     @app_commands.command()
-    @app_commands.describe(
-        query='A generic query (e.g. "adele set fire to the rain") or a URL'
-    )
-    async def queue(self, interaction: Interaction, *, query: Optional[str] = None):
-        """Add a song to the queue. If no url is provided, shows the current queue."""
+    async def queue(self, interaction: Interaction):
+        """Shows the current music queue."""
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
+
+        controller = self.get_controller(interaction)
+
+        if len(controller.sources) == 0:
+            await interaction.response.send_message("No songs in the queue.")
+            return
+        else:
+            list_str = "Songs in the current queue:\n"
+            for index, source in enumerate(controller.sources):
+                if index == controller.current_source_index:
+                    list_str += f"> {index + 1}. **{source.full_title}**\n"
+                else:
+                    list_str += f"> {index + 1}. {source.full_title}\n"
+
+            await interaction.response.send_message(list_str.strip())
 
     @app_commands.describe(
         index="Number index of the song you want to remove from the queue"
