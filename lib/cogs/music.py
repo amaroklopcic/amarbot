@@ -95,7 +95,7 @@ class MusicCog(GroupCog, group_name="yt"):
         else:
             voice_client.play(controller)
             await interaction.edit_original_response(
-                content=f"Now playing **{controller.current_source.source.full_title}**!"
+                content=f"Now playing **{controller.current_source.full_title}**!"
             )
 
     @app_commands.command()
