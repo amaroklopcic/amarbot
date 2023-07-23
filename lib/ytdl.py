@@ -462,9 +462,6 @@ class YTDLSourcesController(discord.AudioSource):
 
     def pop(self, index: int = -1):
         """Remove and cleanup a source from the queue (default last)."""
-        # TODO: what if the player is currently playing this song, and then we pop it,
-        # and there are no songs after this one. the controller will try to play at an
-        # index that doesn't exist. it SHOULD just stop playing
         if index is None:
             index = -1
         source = self.sources.pop(index)
