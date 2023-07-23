@@ -66,7 +66,9 @@ class MusicCog(GroupCog, group_name="yt"):
     )
     async def play(self, interaction: Interaction, *, query: str):
         """Plays from a query or url (almost anything youtube_dl supports)."""
-        await interaction.response.defer()
+        await interaction.response.send_message(
+            f"Fetching metadata for query: *{query}*"
+        )
 
         # TODO: adding a song that already exists in the controller should not be
         # redownloaded
@@ -83,17 +85,17 @@ class MusicCog(GroupCog, group_name="yt"):
         if voice_client.is_playing():
             voice_client.source = controller
             if isinstance(source, list):
-                await interaction.followup.send(
-                    f"Added a playlist with **{len(source)}** songs to the queue."
+                await interaction.edit_original_response(
+                    content=f"Added a playlist with **{len(source)}** songs to the queue."
                 )
             else:
-                await interaction.followup.send(
-                    f"Added **{source.metadata['title']}** to the queue."
+                await interaction.edit_original_response(
+                    content=f"Added **{source.full_title}** to the queue."
                 )
         else:
             voice_client.play(controller)
-            await interaction.followup.send(
-                f"Now playing **{controller.current_source.metadata['title']}**!"
+            await interaction.edit_original_response(
+                content=f"Now playing **{controller.current_source.source.full_title}**!"
             )
 
     @app_commands.command()
