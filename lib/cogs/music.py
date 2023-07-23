@@ -232,6 +232,31 @@ class MusicCog(GroupCog, group_name="yt"):
     @app_commands.command()
     async def pop(self, interaction: Interaction, *, index: Optional[int] = None):
         """Remove a song from the queue at index (default last)."""
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
+
+        controller = self.get_controller(interaction)
+
+        if len(controller.sources) == 0:
+            await interaction.response.send_message("No songs in the queue.")
+            return
+        elif isinstance(index, int) and index < 1:
+            await interaction.response.send_message(f"Index must be higher than 0.")
+            return
+        elif isinstance(index, int) and index > len(controller.sources):
+            await interaction.response.send_message(
+                f"No song in the queue at position {index}."
+            )
+            return
+
+        if isinstance(index, int):
+            index = index - 1
+
+        source = controller.pop(index)
+        await interaction.response.send_message(
+            f"Removed **{source.full_title}** from the queue."
+        )
 
     @app_commands.command()
     async def next(self, interaction: Interaction):

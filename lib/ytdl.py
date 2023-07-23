@@ -297,6 +297,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return filename
 
     def cleanup(self):
+        if self.is_downloading:
+            self.download_task.cancel()
         self._audio_buffer = []
         self._audio_buffer_index = -1
         super().cleanup()
@@ -446,8 +448,16 @@ class YTDLSourcesController(discord.AudioSource):
 
         self._prefetch_sources_audio_data()
 
-    # def pop(self, index: int):
-    #     """Remove a source from the queue."""
+    def pop(self, index: int = -1):
+        """Remove and cleanup a source from the queue (default last)."""
+        # TODO: what if the player is currently playing this song, and then we pop it,
+        # and there are no songs after this one. the controller will try to play at an
+        # index that doesn't exist. it SHOULD just stop playing
+        if index is None:
+            index = -1
+        source = self.sources.pop(index)
+        source.cleanup()
+        return source
 
     # TODO: next/back commands should reset the song and play from the beginning
     def next(self):
@@ -541,8 +551,6 @@ class YTDLSourcesController(discord.AudioSource):
         self.is_stopped = True
 
         for source in self.sources:
-            if source.is_downloading:
-                source.download_task.cancel()
             source.cleanup()
 
         self.sources = []
