@@ -1,244 +1,356 @@
 import asyncio
-from typing import List
+import math
+from typing import List, Mapping, Optional
 
-from discord.ext import commands
+from discord import File, Interaction, app_commands
+from discord.errors import HTTPException
+from discord.ext.commands.bot import Bot
+from discord.ext.commands.cog import GroupCog
 
-from lib.cogs.cog import CommonCog
+from lib.common import join_users_vc
 from lib.logging import get_logger
-from lib.ytdl import YTDLSource
+from lib.ytdl import YTDLSource, YTDLSourcesController
+
+# TODO: add a /progress command that returns something like this: ...............|........ 2:15 / 3:22
+# TODO: add a /repeat command that repeats songs in a queue or a specific song
 
 
-class MusicCog(CommonCog):
+def format_seconds(seconds: float):
+    """Formats `seconds` into a more readable `MM:SS` format."""
+    mins = math.floor(seconds / 60)
+    secs = math.floor(seconds % 60)
+    return f"{mins:02d}:{secs:02d}"
+
+
+class MusicCog(GroupCog, group_name="yt"):
     """Commands related to playing music."""
 
-    def __init__(self, bot: commands.Bot) -> None:
-        super().__init__(bot)
+    def __init__(self, bot: Bot) -> None:
+        super().__init__()
+
         self.logger = get_logger(__name__)
         self.logger.debug("Initializing MusicCog...")
-        self.controller = MusicController(bot.loop)
 
-    @commands.command()
-    async def play(self, ctx: commands.Context, *, url):
-        """Plays from a query or url (almost anything youtube_dl supports)"""
-        async with ctx.typing():
-            self.controller.update_ctx(ctx)
+        self.bot = bot
+        self.controllers: Mapping[str, YTDLSourcesController] = {}
 
-            if self.controller.is_stopped:
-                self.controller.push(url)
-                self.controller.play()
+    def get_controller(self, interaction: Interaction):
+        """Fetch the music controller for the interactions guild, creating it if it
+        doesn't exist.
+        """
+        guild_id = interaction.guild.id
+        controller = self.controllers.get(guild_id)
+        if controller is not None:
+            return controller
+        else:
+            self.controllers[guild_id] = YTDLSourcesController(loop=self.bot.loop)
+            return self.controllers[guild_id]
+
+    def delete_controller(self, interaction: Interaction):
+        guild_id = interaction.guild.id
+        if guild_id in self.controllers.keys():
+            del self.controllers[guild_id]
+
+    async def get_voice_channel(self, interaction: Interaction):
+        """Returns the current `discord.voice_client.VoiceClient` instance."""
+        ctx = await self.bot.get_context(interaction)
+        return ctx.voice_client
+
+    async def ensure_voice(self, interaction: Interaction):
+        """Checks if the bot is connected to a voice channel and returns the
+        `discord.voice_client.VoiceClient` instance if it is.
+        """
+        voice_client = await self.get_voice_channel(interaction)
+        if voice_client is None:
+            return await interaction.response.send_message(
+                "Not connected to a voice channel."
+            )
+        return voice_client
+
+    @app_commands.command()
+    @app_commands.describe(
+        query='A generic query (e.g. "adele set fire to the rain") or a URL'
+    )
+    async def play(self, interaction: Interaction, *, query: str):
+        """Plays from a query or url (almost anything youtube_dl supports)."""
+        await interaction.response.send_message(
+            f"Fetching metadata for query: *{query}*"
+        )
+
+        # TODO: adding a song that already exists in the controller should not be
+        # redownloaded
+        source = await YTDLSource.from_query(query, loop=self.bot.loop)
+
+        controller = self.get_controller(interaction)
+        controller.append(source)
+        await controller.wait_for_ready_state()
+
+        voice_client = await self.get_voice_channel(interaction)
+        if not voice_client:
+            voice_client = await join_users_vc(self.bot, interaction)
+
+        if voice_client.is_playing():
+            voice_client.source = controller
+            if isinstance(source, list):
+                await interaction.edit_original_response(
+                    content=f"Added a playlist with **{len(source)}** songs to the queue."
+                )
             else:
-                # TODO: adjust MusicController to handle this more cleanly / better
-                # skip the song first, so that the first song in the queue (the song
-                # that's current playing) gets removed from the queue, THEN insert our
-                # next song before the async player picks up the next song in the queue
-                self.controller.skip()
-                self.controller.insert(url)
-
-            await self.controller.on_player_start()
-
-    @commands.command()
-    async def volume(self, ctx: commands.Context, volume: int):
-        """Changes the player's volume"""
-        if ctx.voice_client is None:
-            return await ctx.send("Not connected to a voice channel.")
-
-        if volume < 1 or volume > 100:
-            return await ctx.send("Volume must be in range of 1-100.")
-
-        ctx.voice_client.source.volume = volume / 100
-
-        await ctx.send(f"Changed volume to {volume}%")
-
-    @commands.command()
-    async def pause(self, ctx: commands.Context):
-        """Pause the music player"""
-        if ctx.voice_client is None:
-            return await ctx.send("Not connected to a voice channel.")
-
-        self.controller.pause()
-
-    @commands.command()
-    async def resume(self, ctx: commands.Context):
-        """Resume the music player"""
-        if ctx.voice_client is None:
-            return await ctx.send("Not connected to a voice channel.")
-
-        self.controller.resume()
-
-    @commands.command()
-    async def queue(self, ctx: commands.Context, *, url: str | None = None):
-        """Add a song to the queue. If no url is provided, shows the current queue."""
-        if url:
-            async with ctx.typing():
-                self.controller.push(url)
-                await ctx.send(
-                    f"Added to queue: {url} ({len(self.controller.queue)} in queue)"
+                await interaction.edit_original_response(
+                    content=f"Added **{source.full_title}** to the queue."
                 )
         else:
-            async with ctx.typing():
-                if len(self.controller.queue) == 0:
-                    await ctx.send("No songs in the queue")
-                    return
-
-                list_str = "Songs in the current queue:\n"
-                for index, song_name in enumerate(self.controller.queue):
-                    list_str += f"> {index + 1}. {song_name}"
-                    if index == 0:
-                        list_str += " *(currently playing)*\n"
-                    else:
-                        list_str += "\n"
-
-                await ctx.send(list_str.strip())
-
-    @commands.command()
-    async def pop(self, ctx: commands.Context, *, index: int):
-        """Remove a song from the queue at index (default last)"""
-        async with ctx.typing():
-            if len(self.controller.queue) < 2:
-                await ctx.send("No songs in the queue to remove")
-                return
-
-            song_name = self.controller.pop(index and index - 1 or None)
-            await ctx.send(
-                f"Removed from queue: {song_name} ({len(self.controller.queue)} in queue)"
+            voice_client.play(controller)
+            await interaction.edit_original_response(
+                content=f"Now playing **{controller.current_source.full_title}**!"
             )
 
-    @commands.command()
-    async def skip(self, ctx: commands.Context):
-        """Skip the current playing song"""
-        self.controller.skip()
+    @app_commands.command()
+    async def stop(self, interaction: Interaction):
+        """Stops the player and disconnects the bot from voice."""
+        self.logger.debug(f"Stopping the music player in {interaction.guild.name}...")
 
-    @commands.command()
-    async def stop(self, ctx: commands.Context):
-        """Stops and disconnects the bot from voice"""
-        await self.disconnect_vc(ctx)
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
 
-    @play.before_invoke
-    async def ensure_voice(self, ctx: commands.Context):
-        await self.join_authors_vc(ctx)
+        controller = self.get_controller(interaction)
+        controller.cleanup()
+        self.delete_controller(interaction)
 
+        await voice_client.disconnect()
+        voice_client.cleanup()
 
-class MusicController:
-    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
-        self.logger = get_logger(__name__)
-        self.logger.debug("Initializing MusicController...")
+        await interaction.response.send_message("Goodbye!")
 
-        self.loop = loop
-        self.queue: List[str] = []
-        self.ctx: commands.Context | None = None
-        self.player: YTDLSource | None = None
-        self.is_stopped = False
+    @app_commands.command()
+    async def grab(self, interaction: Interaction):
+        """Sends a downloadable mp3 of the current playing song to the channel."""
+        controller = self.get_controller(interaction)
+        source = controller.current_source
 
-        self._song_task: asyncio.Task | None = None
-        self._song_started_event: asyncio.Event = asyncio.Event()
-        self._song_finished_event: asyncio.Event = asyncio.Event()
+        if source is None:
+            await interaction.response.send_message(
+                "There is no song currently playing"
+            )
+            return
 
-        # kick off event loop
-        self._update_task = self.loop.create_task(self.update_loop())
+        if source.is_livestream:
+            await interaction.response.send_message("Can't download a livestream!")
+            return
 
-    def update_ctx(self, ctx: commands.Context):
-        self.ctx = ctx
+        await interaction.response.defer()
+        await interaction.followup.send("Downloading song...")
 
-    async def update_loop(self):
-        # run update loop every 1 second
-        await asyncio.sleep(1)
+        await source.wait_for_download_ready_state()
 
-        # schedule next song to be played
-        if not self.is_stopped and not self._song_task:
-            if len(self.queue) > 0:
-                self._song_task = self.loop.create_task(self._play())
+        await interaction.edit_original_response(content="Converting song...")
 
-        # schedule next update
-        self._update_task = self.loop.create_task(self.update_loop())
+        filename = await source.write_buffer_to_file()
+        file = File(fp=filename, filename=f"{source.metadata['title']}.mp3")
 
-    async def _play(self):
-        next_song = self.queue[0]
-
-        self.player = await YTDLSource.from_url(next_song, loop=self.loop, stream=True)
-        self.queue[0] = f"{self.player.title}"
-        self.ctx.voice_client.play(self.player, after=lambda e: self._on_song_finish(e))
-
-        self._song_started_event.set()
-        await self.ctx.send(f"Now playing: {self.player.title}")
-
-        await self._song_finished_event.wait()
-
-    def _on_song_finish(self, error):
-        # NOTE: doesnt run if the stop command is issued
-        if error:
-            self.logger.error(f"Player error:\n{error}")
-
-        self.queue.pop(0)
-        self.loop.call_soon_threadsafe(self._song_finished_event.set)
-        self.loop.call_soon_threadsafe(self._song_started_event.clear)
-        self._song_task = None
-
-    def play(self):
-        """Plays a song from the top of the queue.
-
-        Returns a `asyncio.Task` that doesnt resolve until the song is
-        done playing.
-        """
-        self.is_stopped = False
-
-    def stop(self):
-        """Stops the current song and removes it from the queue. Does not schedule
-        the next song.
-        """
-        self.ctx.voice_client.stop()
-        self._song_task.cancel()
-        self.queue.pop(0)
-        self.is_stopped = True
-        self._song_task = None
-
-    def pause(self):
-        """Pauses the current playing song."""
-        self.ctx.voice_client.pause()
-
-    def resume(self):
-        """Resumes the current playing song."""
-        self.ctx.voice_client.resume()
-
-    def insert(self, url: str):
-        """Insert a url into the first position of the queue, effectively making it the
-        next song to be played.
-        """
         try:
-            self.queue.insert(0, url)
-        except IndexError:
-            self.push(url)
+            await interaction.edit_original_response(
+                content="Here's the downloaded song!",
+                attachments=[file],
+            )
+        except HTTPException as e:
+            if e.status == 413:
+                await interaction.edit_original_response(
+                    content=(
+                        f"File size exceeds the guild's max file size "
+                        f"({(interaction.guild.filesize_limit / 1024) / 1024:.2f} MB)"
+                    )
+                )
+            else:
+                err_msg = "Encountered an unexpected issue when trying to send the file"
+                await interaction.edit_original_response(content=err_msg)
+                self.logger.exception(err_msg)
+                raise
+        except Exception as e:
+            err_msg = "Encountered an unexpected issue when trying to send the file"
+            await interaction.edit_original_response(content=err_msg)
+            self.logger.exception(err_msg)
+            raise
 
-    def push(self, url: str):
-        """Insert a url into the queue"""
-        # instead of holding the player in memory until it gets played, just add
-        # the title so we can regrab it later, since youtube invalidates the links
-        # after some time
-        self.queue.append(url)
+    @app_commands.command()
+    @app_commands.describe(volume="Number between 1-100")
+    async def volume(self, interaction: Interaction, volume: int):
+        """Changes the player's volume."""
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
 
-    def pop(self, index: int):
-        """Remove a song from the queue and return the name."""
-        return self.queue.pop(index)
+        if volume < 1 or volume > 100:
+            return await interaction.response.send_message(
+                "Volume must be a number in the range of 1-100."
+            )
 
-    def skip(self):
-        """Skip the currently playing song and schedule the next one in the queue."""
-        self.ctx.voice_client.stop()
-        # self.queue.pop(0)
+        controller = self.get_controller(interaction)
+        controller.volume = volume / 100
 
-    # -vvv- events -vvv-
-    async def on_player_start(self):
-        """Blocking call that resolves when the players starts playing a song.
+        await interaction.response.send_message(f"Changed volume to {volume}%")
 
-        Resolves instantly if a song is currently playing.
-        """
-        await self._song_started_event.wait()
+    @app_commands.command()
+    async def pause(self, interaction: Interaction):
+        """Pause the music player."""
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
 
-    async def on_player_finish(self):
-        """Blocking call that resolves when the players finishes playing a song.
+        voice_client.pause()
 
-        Resolves instantly if a song has already finished playing.
-        """
-        await self._song_finished_event.wait()
+        await interaction.response.send_message(f"Paused!")
 
-    def __delattr__(self, __name: str) -> None:
-        # TODO: remove next update task from event loop
-        pass
+    @app_commands.command()
+    async def resume(self, interaction: Interaction):
+        """Resume the music player."""
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
+
+        voice_client.resume()
+
+        await interaction.response.send_message(f"Resumed!")
+
+    @app_commands.command()
+    async def queue(self, interaction: Interaction):
+        """Shows the current music queue."""
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
+
+        controller = self.get_controller(interaction)
+
+        if len(controller.sources) == 0:
+            await interaction.response.send_message("No songs in the queue.")
+            return
+        else:
+            list_str = "Songs in the current queue:\n"
+            for index, source in enumerate(controller.sources):
+                if index == controller.current_source_index:
+                    list_str += f"> {index + 1}. **{source.full_title}**\n"
+                else:
+                    list_str += f"> {index + 1}. {source.full_title}\n"
+
+            await interaction.response.send_message(list_str.strip())
+
+    @app_commands.describe(
+        index="Number index of the song you want to remove from the queue"
+    )
+    @app_commands.command()
+    async def pop(self, interaction: Interaction, *, index: Optional[int] = None):
+        """Remove a song from the queue at index (default last)."""
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
+
+        controller = self.get_controller(interaction)
+
+        if len(controller.sources) == 0:
+            await interaction.response.send_message("No songs in the queue.")
+            return
+        elif isinstance(index, int) and index < 1:
+            await interaction.response.send_message(f"Index must be higher than 0.")
+            return
+        elif isinstance(index, int) and index > len(controller.sources):
+            await interaction.response.send_message(
+                f"No song in the queue at position {index}."
+            )
+            return
+
+        if isinstance(index, int):
+            index = index - 1
+
+        source = controller.pop(index)
+        await interaction.response.send_message(
+            f"Removed **{source.full_title}** from the queue."
+        )
+
+    @app_commands.command()
+    async def next(self, interaction: Interaction):
+        """Play the next song in the queue."""
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
+
+        controller = self.get_controller(interaction)
+
+        if controller.current_source_index + 2 > len(controller.sources):
+            await interaction.response.send_message("No next song in the queue.")
+            return
+
+        controller.next()
+
+        await interaction.response.send_message(
+            f"Now playing **{controller.current_source.metadata['title']}**!"
+        )
+
+    @app_commands.command()
+    async def back(self, interaction: Interaction):
+        """Play the previous song in the queue."""
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
+
+        controller = self.get_controller(interaction)
+
+        if controller.current_source_index - 1 < 0:
+            await interaction.response.send_message("No previous song.")
+            return
+
+        controller.back()
+
+        await interaction.response.send_message(
+            f"Now playing **{controller.current_source.metadata['title']}**!"
+        )
+
+    @app_commands.command()
+    async def scrub(self, interaction: Interaction, *, seconds: int):
+        """Fast-forward or rewind the current playing song."""
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
+
+        controller = self.get_controller(interaction)
+
+        controller.scrub(seconds)
+
+        time_elapsed = format_seconds(
+            controller.current_source.get_time_elapsed() / 1000
+        )
+        time_total = format_seconds(controller.current_source.duration)
+
+        await interaction.response.send_message(
+            f"Scrubbed to {time_elapsed} / {time_total}"
+        )
+
+    @app_commands.command()
+    async def slowed(self, interaction: Interaction):
+        """Change the player to play songs 1.5x slower."""
+
+    @app_commands.command()
+    async def spedup(self, interaction: Interaction):
+        """Change the player to play songs 1.5x faster."""
+
+    @app_commands.command()
+    @app_commands.describe(
+        query='A generic query (e.g. "adele set fire to the rain") or a URL'
+    )
+    async def mp3(self, interaction: Interaction, query: str):
+        """Send an mp3 download link to the channel."""
+        await interaction.response.defer()
+        # source = await YTDLSource.from_url(query, loop=self.bot.loop, stream=False)
+        # player = YTPlayer(query, loop=self.bot.loop)
+        # await player.wait_for_ready_state()
+        # print("player ready!")
+        # print(await player.download())
+        # print("download finished")
+        await interaction.followup.send(f"Here's yo file dawg:")
+
+    @app_commands.command()
+    @app_commands.describe(
+        query='A generic query (e.g. "adele set fire to the rain") or a URL'
+    )
+    async def mp4(self, interaction: Interaction, query: str):
+        """Send an mp4 download link to the channel."""
