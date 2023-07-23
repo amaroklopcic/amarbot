@@ -122,6 +122,18 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 err_msg = "ytdl returned a playlist extraction with no entries"
                 raise Exception(err_msg)
 
+            # TODO: I added this line as a temporary fix to queries that result in a
+            # playlist with only one song in them, resulting in a "Added a playlist
+            # with 1 songs to the queue" message sent to the channel
+            # this line should be removed and we need to add separate playlist
+            # metadata so our discord music cog can send more descriptive messages
+            if len(entries) == 1:
+                return YTDLSource(
+                    discord.FFmpegPCMAudio(entries[0]["url"], **ffmpeg_options),
+                    metadata=entries[0],
+                    loop=loop,
+                )
+
             return [
                 YTDLSource(
                     discord.FFmpegPCMAudio(entry["url"], **ffmpeg_options),
