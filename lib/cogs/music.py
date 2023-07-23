@@ -1,18 +1,25 @@
 import asyncio
-from typing import List, Optional, Mapping
+import math
+from typing import List, Mapping, Optional
 
-from discord import Interaction, app_commands, File
+from discord import File, Interaction, app_commands
 from discord.errors import HTTPException
 from discord.ext.commands.bot import Bot
 from discord.ext.commands.cog import GroupCog
 
+from lib.common import join_users_vc
 from lib.logging import get_logger
 from lib.ytdl import YTDLSource, YTDLSourcesController
-from lib.common import join_users_vc
-
 
 # TODO: add a /progress command that returns something like this: ...............|........ 2:15 / 3:22
 # TODO: add a /repeat command that repeats songs in a queue or a specific song
+
+
+def format_seconds(seconds: float):
+    """Formats `seconds` into a more readable `MM:SS` format."""
+    mins = math.floor(seconds / 60)
+    secs = math.floor(seconds % 60)
+    return f"{mins:02d}:{secs:02d}"
 
 
 class MusicCog(GroupCog, group_name="yt"):
@@ -299,8 +306,24 @@ class MusicCog(GroupCog, group_name="yt"):
         )
 
     @app_commands.command()
-    async def scrub(self, interaction: Interaction):
+    async def scrub(self, interaction: Interaction, *, seconds: int):
         """Fast-forward or rewind the current playing song."""
+        voice_client = await self.ensure_voice(interaction)
+        if not voice_client:
+            return
+
+        controller = self.get_controller(interaction)
+
+        controller.scrub(seconds)
+
+        time_elapsed = format_seconds(
+            controller.current_source.get_time_elapsed() / 1000
+        )
+        time_total = format_seconds(controller.current_source.duration)
+
+        await interaction.response.send_message(
+            f"Scrubbed to {time_elapsed} / {time_total}"
+        )
 
     @app_commands.command()
     async def slowed(self, interaction: Interaction):

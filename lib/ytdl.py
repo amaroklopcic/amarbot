@@ -87,6 +87,16 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return f"{artist} - {title}".strip()
 
     @property
+    def duration(self):
+        """Total audio source duration (in seconds)."""
+        return self.metadata["duration"]
+
+    @property
+    def buffer_duration(self):
+        """Total duration of the audio source loaded in the buffer (in milliseconds)."""
+        return len(self._audio_buffer) * 20
+
+    @property
     def is_downloading(self) -> bool:
         return not self.download_task is None
 
@@ -472,6 +482,22 @@ class YTDLSourcesController(discord.AudioSource):
     def back(self):
         """Sets the current source index to the next source in the queue."""
         self.current_source_index -= 1
+
+    def seek(self, time: int):
+        """Goes forward/backward to a specified time in the current source."""
+        # TODO: finish implementing this
+        raise NotImplementedError()
+
+    def scrub(self, time: int):
+        """Goes forward/backward in the current source by `scrub_amount` (in seconds)."""
+        # "indexes" here is referring to each index in the audio buffer
+        # each index in the buffer contains bytes representing 20ms worth of audio data
+        time_ms = time * 1000
+        skip_indexes = round(time_ms / 20)
+        total_indexes = len(self.current_source._audio_buffer) - 1
+        current_index = self.current_source._audio_buffer_index
+        new_index = max(0, min(current_index + skip_indexes, total_indexes))
+        self.current_source._audio_buffer_index = int(new_index)
 
     async def wait_for_ready_state(self):
         """Coroutine that resolves when the source is ready to start streaming."""
