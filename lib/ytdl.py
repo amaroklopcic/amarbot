@@ -435,9 +435,7 @@ class YTDLSourcesController(discord.AudioSource):
     def append(self, source: YTDLSource | List[YTDLSource]):
         """Appends a `YTDLSource` or a list of `YTDLSource` to the end of the queue."""
         if isinstance(source, list):
-            logger.debug(
-                f"Adding a playlist with {len(source)} songs to the queue..."
-            )
+            logger.debug(f"Adding a playlist with {len(source)} songs to the queue...")
             self.sources.extend(source)
         else:
             logger.debug(f"Adding {source.metadata['title']} songs to the queue...")
@@ -446,12 +444,9 @@ class YTDLSourcesController(discord.AudioSource):
         self._prefetch_sources_audio_data()
 
     def insert(self, index: int, source: YTDLSource | List[YTDLSource]):
-        """Inserts a `YTDLSource` or a list of `YTDLSource` before the specified index.
-        """
+        """Inserts a `YTDLSource` or a list of `YTDLSource` before the specified index."""
         if isinstance(source, list):
-            logger.debug(
-                f"Adding a playlist with {len(source)} songs to the queue..."
-            )
+            logger.debug(f"Adding a playlist with {len(source)} songs to the queue...")
             for i, src in enumerate(source):
                 self.sources.insert(index + i, src)
         else:
